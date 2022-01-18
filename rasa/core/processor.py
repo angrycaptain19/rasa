@@ -469,10 +469,11 @@ class MessageProcessor:
     ) -> bool:
         """Check if the conversation has been restarted after reminder."""
 
-        for e in reversed(tracker.applied_events()):
-            if MessageProcessor._is_reminder(e, reminder_event.name):
-                return True
-        return False  # not found in applied events --> has been restarted
+
+        return any(
+            MessageProcessor._is_reminder(e, reminder_event.name)
+            for e in reversed(tracker.applied_events())
+        )
 
     @staticmethod
     def _has_message_after_reminder(
@@ -676,11 +677,7 @@ class MessageProcessor:
         self, message: UserMessage, tracker: DialogueStateTracker
     ) -> None:
 
-        if message.parse_data:
-            parse_data = message.parse_data
-        else:
-            parse_data = await self.parse_message(message)
-
+        parse_data = message.parse_data or await self.parse_message(message)
         # don't ever directly mutate the tracker
         # - instead pass its events to log
         tracker.update(
@@ -972,10 +969,9 @@ class MessageProcessor:
         if followup_action:
             tracker.clear_followup_action()
             if followup_action in self.domain.action_names_or_texts:
-                prediction = PolicyPrediction.for_action_name(
+                return PolicyPrediction.for_action_name(
                     self.domain, followup_action, FOLLOWUP_ACTION
                 )
-                return prediction
 
             logger.error(
                 f"Trying to run unknown follow-up action '{followup_action}'. "
@@ -990,5 +986,4 @@ class MessageProcessor:
         results = self.graph_runner.run(
             inputs={PLACEHOLDER_TRACKER: tracker}, targets=[target]
         )
-        policy_prediction = results[target]
-        return policy_prediction
+        return results[target]

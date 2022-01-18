@@ -573,7 +573,7 @@ def visualize_stories(
     completed_trackers = g.generate()
     event_sequences = [t.events for t in completed_trackers]
 
-    graph = visualize_neighborhood(
+    return visualize_neighborhood(
         None,
         event_sequences,
         output_file,
@@ -583,4 +583,3 @@ def visualize_stories(
         max_distance=1,
         fontsize=fontsize,
     )
-    return graph

@@ -35,12 +35,14 @@ def print_buttons(
         choices = cli_utils.button_choices_from_message_data(
             message, allow_free_text_input=True
         )
-        question = questionary.select(
+        return questionary.select(
             message.get("text"),
             choices,
-            style=Style([("qmark", "#6d91d3"), ("", "#6d91d3"), ("answer", "#b373d6")]),
+            style=Style(
+                [("qmark", "#6d91d3"), ("", "#6d91d3"), ("answer", "#b373d6")]
+            ),
         )
-        return question
+
     else:
         rasa.shared.utils.cli.print_color("Buttons:", color=color)
         for idx, button in enumerate(message.get("buttons")):

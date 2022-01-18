@@ -48,7 +48,7 @@ class EntitySynonymMapper(GraphComponent, EntityExtractorMixin):
         self._model_storage = model_storage
         self._resource = resource
 
-        self.synonyms = synonyms if synonyms else {}
+        self.synonyms = synonyms or {}
 
     @classmethod
     def create(

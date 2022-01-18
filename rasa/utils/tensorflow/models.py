@@ -362,7 +362,7 @@ class RasaModel(TmpKerasModel):
         ) -> Optional[Union[Dict[Text, Any], List[np.ndarray]]]:
             if isinstance(x, dict):
                 return {k: _recurse(v) for k, v in x.items()}
-            elif (isinstance(x, list) or isinstance(x, np.ndarray)) and np.size(x) == 0:
+            elif isinstance(x, (list, np.ndarray)) and np.size(x) == 0:
                 return None
             return x
 

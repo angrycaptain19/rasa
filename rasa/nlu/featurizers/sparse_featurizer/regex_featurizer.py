@@ -72,7 +72,7 @@ class RegexFeaturizer(SparseFeaturizer, GraphComponent):
         self._model_storage = model_storage
         self._resource = resource
 
-        self.known_patterns = known_patterns if known_patterns else []
+        self.known_patterns = known_patterns or []
         self.case_sensitive = config["case_sensitive"]
         self.finetune_mode = execution_context.is_finetuning
 
@@ -191,9 +191,7 @@ class RegexFeaturizer(SparseFeaturizer, GraphComponent):
             # nothing to featurize
             return None, None
 
-        flags = 0  # default flag
-        if not self.case_sensitive:
-            flags = re.IGNORECASE
+        flags = re.IGNORECASE if not self.case_sensitive else 0
 
         sequence_length = len(tokens)
 

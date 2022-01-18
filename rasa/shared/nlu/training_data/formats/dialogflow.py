@@ -107,7 +107,7 @@ class DialogflowReader(TrainingDataReader):
         synonyms = DialogflowReader._flatten(synonyms)
         elements = [synonym for synonym in synonyms if "@" not in synonym]
 
-        if len(elements) == 0:
+        if not elements:
             return None
         return [{"name": entity.get("name"), "elements": elements}]
 
@@ -140,10 +140,7 @@ class DialogflowReader(TrainingDataReader):
         fn: Text, language: Text, fformat: Text
     ) -> Optional[List[Dict[Text, Any]]]:
         """Infer and load example file based on root filename and root format."""
-        if fformat == DIALOGFLOW_INTENT:
-            examples_type = "usersays"
-        else:
-            examples_type = "entries"
+        examples_type = "usersays" if fformat == DIALOGFLOW_INTENT else "entries"
         examples_fn_ending = f"_{examples_type}_{language}.json"
         examples_fn = fn.replace(".json", examples_fn_ending)
         if os.path.isfile(examples_fn):

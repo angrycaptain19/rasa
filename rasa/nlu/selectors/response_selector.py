@@ -333,10 +333,7 @@ class ResponseSelector(DIETClassifier):
     @staticmethod
     def model_class(use_text_as_label: bool) -> Type[RasaModel]:
         """Returns model class."""
-        if use_text_as_label:
-            return DIET2DIET
-        else:
-            return DIET2BOW
+        return DIET2DIET if use_text_as_label else DIET2BOW
 
     def _load_selector_params(self) -> None:
         self.retrieval_intent = self.component_config[RETRIEVAL_INTENT]
@@ -559,11 +556,7 @@ class ResponseSelector(DIETClassifier):
                 # is not needed in the ranking.
                 label.pop(INTENT_NAME_KEY)
 
-            selector_key = (
-                self.retrieval_intent
-                if self.retrieval_intent
-                else RESPONSE_SELECTOR_DEFAULT_INTENT
-            )
+            selector_key = self.retrieval_intent or RESPONSE_SELECTOR_DEFAULT_INTENT
 
             logger.debug(
                 f"Adding following selector key to message property: {selector_key}"

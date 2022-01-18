@@ -180,10 +180,8 @@ class YAMLStoryWriter(StoryWriter):
             `False` otherwise.
         """
         return any(
-            [
-                [event for event in story_step.events if isinstance(event, ActiveLoop)]
-                for story_step in stories
-            ]
+            [event for event in story_step.events if isinstance(event, ActiveLoop)]
+            for story_step in stories
         )
 
     @staticmethod
@@ -204,9 +202,9 @@ class YAMLStoryWriter(StoryWriter):
         if user_utterance.intent_name and not user_utterance.use_text_for_featurization:
             result[KEY_USER_INTENT] = (
                 user_utterance.full_retrieval_intent_name
-                if user_utterance.full_retrieval_intent_name
-                else user_utterance.intent_name
+                or user_utterance.intent_name
             )
+
 
         entities = []
         if len(user_utterance.entities) and not is_test_story:

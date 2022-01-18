@@ -1104,7 +1104,7 @@ class TEDPolicy(Policy):
         featurizer: TrackerFeaturizer,
         should_finetune: bool,
     ) -> TED:
-        model = cls.model_class().load(
+        return cls.model_class().load(
             str(model_utilities["tf_model_file"]),
             model_data_example,
             predict_data_example,
@@ -1117,7 +1117,6 @@ class TEDPolicy(Policy):
             entity_tag_specs=model_utilities["entity_tag_specs"],
             finetune_mode=should_finetune,
         )
-        return model
 
     @classmethod
     def _construct_model_initialization_data(
@@ -1201,8 +1200,9 @@ class TED(TransformerRasaModel):
                 f"Cannot train '{self.__class__.__name__}' model."
             )
 
-        if not any(
-            key in [ACTION_NAME, ACTION_TEXT] for key in self.data_signature.keys()
+        if all(
+            key not in [ACTION_NAME, ACTION_TEXT]
+            for key in self.data_signature.keys()
         ):
             raise ValueError(
                 f"No action features specified. "
@@ -1742,7 +1742,7 @@ class TED(TransformerRasaModel):
         text_output = None
         text_sequence_lengths = None
         batch_encoded = {}
-        for attribute in tf_batch_data.keys():
+        for attribute in tf_batch_data:
             if attribute in SENTENCE_FEATURES_TO_ENCODE + STATE_LEVEL_FEATURES:
                 (
                     attribute_features,
@@ -1783,7 +1783,7 @@ class TED(TransformerRasaModel):
         batch_features = [batch_user, batch_action]
         # once we have user input and previous action,
         # add all other attributes (SLOTS, ACTIVE_LOOP, etc.) to batch_features;
-        for key in batch_encoded.keys():
+        for key in batch_encoded:
             batch_features.append(batch_encoded.get(key))
 
         batch_features = tf.concat(batch_features, axis=-1)
@@ -1925,9 +1925,7 @@ class TED(TransformerRasaModel):
         # all_labels_embed using label ids
 
         indices = tf.cast(label_ids[:, :, 0], tf.int32)
-        labels_embed = tf.gather(all_labels_embed, indices)
-
-        return labels_embed
+        return tf.gather(all_labels_embed, indices)
 
     def batch_loss(
         self, batch_in: Union[Tuple[tf.Tensor], Tuple[np.ndarray]]
@@ -1959,8 +1957,6 @@ class TED(TransformerRasaModel):
         ) = self._embed_dialogue(dialogue_in, tf_batch_data)
         dialogue_mask = tf.squeeze(dialogue_mask, axis=-1)
 
-        losses = []
-
         loss, acc = self._tf_layers[f"loss.{LABEL}"](
             dialogue_embed,
             labels_embed,
@@ -1969,8 +1965,7 @@ class TED(TransformerRasaModel):
             all_label_ids,
             dialogue_mask,
         )
-        losses.append(loss)
-
+        losses = [loss]
         if (
             self.config[ENTITY_RECOGNITION]
             and text_output is not None

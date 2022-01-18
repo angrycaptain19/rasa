@@ -507,26 +507,32 @@ class DIETClassifier(GraphComponent, IntentClassifier, EntityExtractorMixin):
             attribute, self.component_config[FEATURIZERS]
         )
 
-        if dense_sequence_features is not None and sparse_sequence_features is not None:
-            if (
+        if (
+            dense_sequence_features is not None
+            and sparse_sequence_features is not None
+            and (
                 dense_sequence_features.features.shape[0]
                 != sparse_sequence_features.features.shape[0]
-            ):
-                raise ValueError(
-                    f"Sequence dimensions for sparse and dense sequence features "
-                    f"don't coincide in '{message.get(TEXT)}'"
-                    f"for attribute '{attribute}'."
-                )
-        if dense_sentence_features is not None and sparse_sentence_features is not None:
-            if (
+            )
+        ):
+            raise ValueError(
+                f"Sequence dimensions for sparse and dense sequence features "
+                f"don't coincide in '{message.get(TEXT)}'"
+                f"for attribute '{attribute}'."
+            )
+        if (
+            dense_sentence_features is not None
+            and sparse_sentence_features is not None
+            and (
                 dense_sentence_features.features.shape[0]
                 != sparse_sentence_features.features.shape[0]
-            ):
-                raise ValueError(
-                    f"Sequence dimensions for sparse and dense sentence features "
-                    f"don't coincide in '{message.get(TEXT)}'"
-                    f"for attribute '{attribute}'."
-                )
+            )
+        ):
+            raise ValueError(
+                f"Sequence dimensions for sparse and dense sentence features "
+                f"don't coincide in '{message.get(TEXT)}'"
+                f"for attribute '{attribute}'."
+            )
 
         # If we don't use the transformer and we don't want to do entity recognition,
         # to speed up training take only the sentence features as feature vector.
@@ -858,14 +864,15 @@ class DIETClassifier(GraphComponent, IntentClassifier, EntityExtractorMixin):
                 f"to continue training in finetune mode."
             )
 
-        if self.component_config.get(INTENT_CLASSIFICATION):
-            if not self._check_enough_labels(model_data):
-                logger.error(
-                    f"Cannot train '{self.__class__.__name__}'. "
-                    f"Need at least 2 different intent classes. "
-                    f"Skipping training of classifier."
-                )
-                return self._resource
+        if self.component_config.get(
+            INTENT_CLASSIFICATION
+        ) and not self._check_enough_labels(model_data):
+            logger.error(
+                f"Cannot train '{self.__class__.__name__}'. "
+                f"Need at least 2 different intent classes. "
+                f"Skipping training of classifier."
+            )
+            return self._resource
         if self.component_config.get(ENTITY_RECOGNITION):
             self.check_correct_entity_annotations(training_data)
 
@@ -1197,7 +1204,7 @@ class DIETClassifier(GraphComponent, IntentClassifier, EntityExtractorMixin):
             label_key=label_key, label_sub_key=label_sub_key, data=data_example
         )
 
-        model = cls._load_model_class(
+        return cls._load_model_class(
             tf_model_file,
             model_data_example,
             label_data,
@@ -1205,8 +1212,6 @@ class DIETClassifier(GraphComponent, IntentClassifier, EntityExtractorMixin):
             config,
             finetune_mode=finetune_mode,
         )
-
-        return model
 
     @classmethod
     def _load_model_class(

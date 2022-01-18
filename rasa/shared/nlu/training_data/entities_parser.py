@@ -86,11 +86,7 @@ def extract_entity_attributes(match: Match) -> EntityAttributes:
 
     entity_type = match.groupdict()[GROUP_ENTITY_TYPE]
 
-    if match.groupdict()[GROUP_ENTITY_VALUE]:
-        entity_value = match.groupdict()[GROUP_ENTITY_VALUE]
-    else:
-        entity_value = entity_text
-
+    entity_value = match.groupdict()[GROUP_ENTITY_VALUE] or entity_text
     return EntityAttributes(entity_type, entity_value, entity_text, None, None)
 
 

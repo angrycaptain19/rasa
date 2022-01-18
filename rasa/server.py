@@ -371,11 +371,7 @@ def validate_request_body(request: Request, error_message: Text) -> None:
 
 def validate_events_in_request_body(request: Request) -> None:
     """Validates events format in request body."""
-    if not isinstance(request.json, list):
-        events = [request.json]
-    else:
-        events = request.json
-
+    events = [request.json] if not isinstance(request.json, list) else request.json
     try:
         jsonschema.validate(events, EVENTS_SCHEMA)
     except jsonschema.ValidationError as error:
@@ -1210,9 +1206,7 @@ def create_app(
             errors=True,
             report_as_dict=True,
         )
-        evaluation_results = _get_evaluation_results(*evaluations)
-
-        return evaluation_results
+        return _get_evaluation_results(*evaluations)
 
     def _get_evaluation_results(
         intent_report: CVEvaluationResult,

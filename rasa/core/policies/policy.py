@@ -195,8 +195,9 @@ class Policy(GraphComponent):
 
         params = {key: kwargs.get(key) for key in valid_keys if kwargs.get(key)}
         ignored_params = {
-            key: kwargs.get(key) for key in kwargs.keys() if not params.get(key)
+            key: kwargs.get(key) for key in kwargs if not params.get(key)
         }
+
         logger.debug(f"Parameters ignored by `model.fit(...)`: {ignored_params}")
         return params
 
@@ -444,38 +445,32 @@ class Policy(GraphComponent):
         formatted_states = [""]
         if states:
             for index, state in enumerate(states):
-                state_messages = []
                 if state:
+                    state_messages = []
                     if USER in state:
                         if TEXT in state[USER]:
-                            state_messages.append(
-                                f"user text: {str(state[USER][TEXT])}"
-                            )
+                            state_messages.append(f'user text: {state[USER][TEXT]}')
                         if INTENT in state[USER]:
-                            state_messages.append(
-                                f"user intent: {str(state[USER][INTENT])}"
-                            )
+                            state_messages.append(f'user intent: {state[USER][INTENT]}')
                         if ENTITIES in state[USER]:
-                            state_messages.append(
-                                f"user entities: {str(state[USER][ENTITIES])}"
-                            )
+                            state_messages.append(f'user entities: {state[USER][ENTITIES]}')
                     if PREVIOUS_ACTION in state:
                         if ACTION_NAME in state[PREVIOUS_ACTION]:
                             state_messages.append(
-                                f"previous action name: "
-                                f"{str(state[PREVIOUS_ACTION][ACTION_NAME])}"
+                                f'previous action name: {state[PREVIOUS_ACTION][ACTION_NAME]}'
                             )
+
                         if ACTION_TEXT in state[PREVIOUS_ACTION]:
                             state_messages.append(
-                                f"previous action text: "
-                                f"{str(state[PREVIOUS_ACTION][ACTION_TEXT])}"
+                                f'previous action text: {state[PREVIOUS_ACTION][ACTION_TEXT]}'
                             )
+
                     if ACTIVE_LOOP in state:
-                        state_messages.append(f"active loop: {str(state[ACTIVE_LOOP])}")
+                        state_messages.append(f'active loop: {state[ACTIVE_LOOP]}')
                     if SLOTS in state:
-                        state_messages.append(f"slots: {str(state[SLOTS])}")
+                        state_messages.append(f'slots: {state[SLOTS]}')
                     state_message_formatted = " | ".join(state_messages)
-                    state_formatted = f"[state {str(index)}] {state_message_formatted}"
+                    state_formatted = f'[state {index}] {state_message_formatted}'
                     formatted_states.append(state_formatted)
 
         return "\n".join(formatted_states)
@@ -650,8 +645,6 @@ def _get_featurizer_from_config(
 
     featurizer_config = config[0]
     featurizer_name = featurizer_config.pop("name")
-    featurizer_func = rasa.shared.utils.common.class_from_module_path(
+    return rasa.shared.utils.common.class_from_module_path(
         featurizer_name, lookup_path=lookup_path
     )
-
-    return featurizer_func

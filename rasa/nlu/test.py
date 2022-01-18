@@ -1027,7 +1027,7 @@ def pick_best_entity_fit(
     Returns:
         the value of the attribute key of the best fitting entity
     """
-    if len(candidates) == 0:
+    if not candidates:
         return None
     elif len(candidates) == 1:
         return candidates[0]
@@ -1084,7 +1084,7 @@ def determine_entity_for_token(
     Returns:
         entity type
     """
-    if entities is None or len(entities) == 0:
+    if entities is None or not entities:
         return None
     if not do_extractors_support_overlap(extractors) and do_entities_overlap(entities):
         raise ValueError("The possible entities should not overlap.")
@@ -1224,11 +1224,10 @@ def align_all_entity_predictions(
     Returns: list of dictionaries containing the true token labels and token
     labels from the extractors
     """
-    aligned_predictions = []
-    for result in entity_results:
-        aligned_predictions.append(align_entity_predictions(result, extractors))
-
-    return aligned_predictions
+    return [
+        align_entity_predictions(result, extractors)
+        for result in entity_results
+    ]
 
 
 async def get_eval_data(
@@ -1538,10 +1537,11 @@ async def combine_result(
 
 def _contains_entity_labels(entity_results: List[EntityEvaluationResult]) -> bool:
 
-    for result in entity_results:
-        if result.entity_targets or result.entity_predictions:
-            return True
-    return False
+
+    return any(
+        result.entity_targets or result.entity_predictions
+        for result in entity_results
+    )
 
 
 async def cross_validate(

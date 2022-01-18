@@ -376,9 +376,8 @@ class DialogueStateTracker:
 
         if key in self.slots:
             return self.slots[key].value
-        else:
-            logger.info(f"Tried to access non existent slot '{key}'")
-            return None
+        logger.info(f"Tried to access non existent slot '{key}'")
+        return None
 
     def get_latest_entity_values(
         self,

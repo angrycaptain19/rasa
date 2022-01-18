@@ -569,8 +569,7 @@ class CRFEntityExtractor(GraphComponent, EntityExtractorMixin):
             str(index): token_features
             for index, token_features in enumerate(crf_token.dense_features)
         }
-        converted = {"text_dense_features": feature_dict}
-        return converted
+        return {"text_dense_features": feature_dict}
 
     def _convert_to_crf_tokens(self, message: Message) -> List[CRFToken]:
         """Take a message and convert it to crfsuite format."""
@@ -612,10 +611,7 @@ class CRFEntityExtractor(GraphComponent, EntityExtractorMixin):
         for tag_name in self.crf_order:
             if self.component_config[BILOU_FLAG]:
                 bilou_key = bilou_utils.get_bilou_key_for_tag(tag_name)
-                if message.get(bilou_key):
-                    _tags = message.get(bilou_key)
-                else:
-                    _tags = [NO_ENTITY_TAG for _ in tokens]
+                _tags = message.get(bilou_key) or [NO_ENTITY_TAG for _ in tokens]
             else:
                 _tags = [
                     determine_token_labels(

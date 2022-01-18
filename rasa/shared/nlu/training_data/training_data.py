@@ -665,11 +665,11 @@ class TrainingData:
         return test, train
 
     def print_stats(self) -> None:
-        number_of_examples_for_each_intent = []
-        for intent_name, example_count in self.number_of_examples_per_intent.items():
-            number_of_examples_for_each_intent.append(
-                f"intent: {intent_name}, training examples: {example_count}   "
-            )
+        number_of_examples_for_each_intent = [
+            f"intent: {intent_name}, training examples: {example_count}   "
+            for intent_name, example_count in self.number_of_examples_per_intent.items()
+        ]
+
         newline = "\n"
 
         logger.info("Training data stats:")
@@ -707,7 +707,7 @@ class TrainingData:
             self.regex_features,
             self.lookup_tables,
         ]
-        return not any([len(lst) > 0 for lst in lists_to_check])
+        return all(len(lst) <= 0 for lst in lists_to_check)
 
     def contains_no_pure_nlu_data(self) -> bool:
         """Checks if any NLU training data was loaded."""
@@ -717,7 +717,7 @@ class TrainingData:
             self.regex_features,
             self.lookup_tables,
         ]
-        return not any([len(lst) > 0 for lst in lists_to_check])
+        return all(len(lst) <= 0 for lst in lists_to_check)
 
     def has_e2e_examples(self) -> bool:
         """Checks if there are any training examples from e2e stories."""

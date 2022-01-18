@@ -160,7 +160,7 @@ class ConveRTFeaturizer(DenseFeaturizer, GraphComponent):
         Args:
             config: a configuration for this graph component
         """
-        model_url = config.get("model_url", None)
+        model_url = config.get("model_url")
 
         if not model_url:
             raise RasaException(

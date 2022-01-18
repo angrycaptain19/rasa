@@ -64,7 +64,7 @@ def concat_url(base: Text, subpath: Optional[Text]) -> Text:
         return base
 
     url = base
-    if not base.endswith("/"):
+    if not url.endswith("/"):
         url += "/"
     if subpath.startswith("/"):
         subpath = subpath[1:]

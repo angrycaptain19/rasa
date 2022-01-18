@@ -56,7 +56,7 @@ class TwilioOutput(Client, OutputChannel):
 
         message_data = {"to": recipient_id, "from_": self.twilio_number}
         for message_part in text.strip().split("\n\n"):
-            message_data.update({"body": message_part})
+            message_data["body"] = message_part
             await self._send_message(message_data)
 
     async def send_image_url(
@@ -150,7 +150,6 @@ class TwilioInput(InputChannel):
                     logger.debug(e, exc_info=True)
                     if self.debug_mode:
                         raise
-                    pass
             else:
                 logger.debug("Invalid message")
 

@@ -196,7 +196,7 @@ def action_for_name_or_text(
 def create_bot_utterance(message: Dict[Text, Any]) -> BotUttered:
     """Create BotUttered event from message."""
 
-    bot_message = BotUttered(
+    return BotUttered(
         text=message.pop("text", None),
         data={
             "elements": message.pop("elements", None),
@@ -206,14 +206,13 @@ def create_bot_utterance(message: Dict[Text, Any]) -> BotUttered:
             # to be the attachment if there is no other attachment (the
             # `.get` is intentional - no `pop` as we still need the image`
             # property to set it in the following line)
-            "attachment": message.pop("attachment", None) or message.get("image", None),
+            "attachment": message.pop("attachment", None)
+            or message.get("image", None),
             "image": message.pop("image", None),
             "custom": message.pop("custom", None),
         },
         metadata=message,
     )
-
-    return bot_message
 
 
 class Action:
@@ -405,10 +404,9 @@ class ActionRetrieveResponse(ActionBotResponse):
             return None
 
         selected = response_selector_properties[query_key]
-        full_retrieval_utter_action = selected[RESPONSE_SELECTOR_PREDICTION_KEY][
+        return selected[RESPONSE_SELECTOR_PREDICTION_KEY][
             RESPONSE_SELECTOR_UTTER_ACTION_KEY
         ]
-        return full_retrieval_utter_action
 
     async def run(
         self,
@@ -638,14 +636,13 @@ class RemoteAction(Action):
 
         Used for validation of the response returned from the
         Action endpoint."""
-        schema = {
+        return {
             "type": "object",
             "properties": {
                 "events": EVENTS_SCHEMA,
                 "responses": {"type": "array", "items": {"type": "object"}},
             },
         }
-        return schema
 
     def _validate_action_result(self, result: Dict[Text, Any]) -> bool:
         from jsonschema import validate
@@ -735,16 +732,15 @@ class RemoteAction(Action):
             return bot_messages + evts
 
         except ClientResponseError as e:
-            if e.status == 400:
-                response_data = json.loads(e.text)
-                exception = ActionExecutionRejection(
-                    response_data["action_name"], response_data.get("error")
-                )
-                logger.error(exception.message)
-                raise exception
-            else:
+            if e.status != 400:
                 raise RasaException("Failed to execute custom action.") from e
 
+            response_data = json.loads(e.text)
+            exception = ActionExecutionRejection(
+                response_data["action_name"], response_data.get("error")
+            )
+            logger.error(exception.message)
+            raise exception
         except aiohttp.ClientConnectionError as e:
             logger.error(
                 "Failed to run custom action '{}'. Couldn't connect "
@@ -1009,15 +1005,13 @@ class ActionExtractSlots(Action):
     def _verify_mapping_conditions(
         mapping: Dict[Text, Any], tracker: "DialogueStateTracker", slot_name: Text
     ) -> bool:
-        if mapping.get(MAPPING_CONDITIONS) and mapping[MAPPING_TYPE] != str(
-            SlotMappingType.FROM_TRIGGER_INTENT
-        ):
-            if not ActionExtractSlots._matches_mapping_conditions(
+        return bool(
+            not mapping.get(MAPPING_CONDITIONS)
+            or mapping[MAPPING_TYPE] == str(SlotMappingType.FROM_TRIGGER_INTENT)
+            or ActionExtractSlots._matches_mapping_conditions(
                 mapping, tracker, slot_name
-            ):
-                return False
-
-        return True
+            )
+        )
 
     async def _run_custom_action(
         self,
@@ -1045,11 +1039,9 @@ class ActionExtractSlots(Action):
                     disallowed_types.add(event.type_name)
         except (RasaException, ClientResponseError) as e:
             logger.warning(
-                f"Failed to execute custom action '{custom_action}' "
-                f"as a result of error '{str(e)}'. The default action "
-                f"'{self.name()}' failed to fill slots with custom "
-                f"mappings."
+                f"Failed to execute custom action '{custom_action}' as a result of error '{e}'. The default action '{self.name()}' failed to fill slots with custom mappings."
             )
+
 
         for type_name in disallowed_types:
             logger.info(

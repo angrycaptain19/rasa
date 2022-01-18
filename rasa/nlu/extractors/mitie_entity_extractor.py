@@ -181,11 +181,9 @@ class MitieEntityExtractor(GraphComponent, EntityExtractorMixin):
                 sample.add_entity(list(range(start, end)), ent["entity"])
             except Exception as e:
                 rasa.shared.utils.io.raise_warning(
-                    f"Failed to add entity example "
-                    f"'{str(e)}' of sentence '{str(text)}'. "
-                    f"Example will be ignored. Reason: "
-                    f"{e}"
+                    f"Failed to add entity example '{e}' of sentence '{text}'. Example will be ignored. Reason: {e}"
                 )
+
                 continue
         return sample
 

@@ -73,9 +73,7 @@ class LocalModelStorage(ModelStorage):
             temporary_directory = Path(temporary_directory)
 
             cls._extract_archive_to_directory(model_archive_path, temporary_directory)
-            metadata = cls._load_metadata(temporary_directory)
-
-            return metadata
+            return cls._load_metadata(temporary_directory)
 
     @staticmethod
     def _extract_archive_to_directory(

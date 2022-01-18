@@ -254,8 +254,7 @@ class Domain:
                     domain_dict = Domain.merge_domain_dicts(
                         cls, domain_dict, other_dict
                     )
-        domain = Domain.from_dict(domain_dict)
-        return domain
+        return Domain.from_dict(domain_dict)
 
     def merge(self, domain: Optional["Domain"], override: bool = False) -> "Domain":
         """Merge this domain with another one, combining their attributes.
@@ -396,8 +395,8 @@ class Domain:
     def clean_duplicates(dupes: Dict[Text, Any]) -> Dict[Text, Any]:
         """Removes keys for empty values."""
         duplicates = dupes.copy()
-        for k in dupes:
-            if not dupes[k]:
+        for k, v in dupes.items():
+            if not v:
                 duplicates.pop(k)
 
         return duplicates
@@ -580,12 +579,7 @@ class Domain:
             elif isinstance(entity, dict):
                 for _entity, sub_labels in entity.items():
                     entities.append(_entity)
-                    if sub_labels:
-                        if ENTITY_ROLES_KEY in sub_labels:
-                            roles[_entity] = sub_labels[ENTITY_ROLES_KEY]
-                        if ENTITY_GROUPS_KEY in sub_labels:
-                            groups[_entity] = sub_labels[ENTITY_GROUPS_KEY]
-                    else:
+                    if not sub_labels:
                         raise InvalidDomain(
                             f"In the `domain.yml` file, the entity '{_entity}' cannot"
                             f" have value of `{type(sub_labels)}`. If you have placed a"
@@ -598,6 +592,10 @@ class Domain:
                             f" for examples on when to use the ':' character after an"
                             f" entity's name."
                         )
+                    if ENTITY_ROLES_KEY in sub_labels:
+                        roles[_entity] = sub_labels[ENTITY_ROLES_KEY]
+                    if ENTITY_GROUPS_KEY in sub_labels:
+                        groups[_entity] = sub_labels[ENTITY_GROUPS_KEY]
             else:
                 raise InvalidDomain(
                     f"Invalid domain. Entity is invalid, type of entity '{entity}' "
@@ -635,7 +633,7 @@ class Domain:
                 intent, entities, roles, groups
             )
 
-            if intent_name in intent_properties.keys():
+            if intent_name in intent_properties:
                 duplicates.add(intent_name)
 
             intent_properties.update(properties)
@@ -991,7 +989,7 @@ class Domain:
         return [
             f"{slot.name}_{feature_index}"
             for slot in self.slots
-            for feature_index in range(0, slot.feature_dimensionality())
+            for feature_index in range(slot.feature_dimensionality())
         ]
 
     # noinspection PyTypeChecker
@@ -1070,21 +1068,24 @@ class Domain:
         # groups get featurized. We concatenate the entity label with the role/group
         # label using a special separator to make sure that the resulting label is
         # unique (as you can have the same role/group label for different entities).
-        entity_names_basic = set(
+        entity_names_basic = {
             entity["entity"] for entity in entities if "entity" in entity.keys()
-        )
-        entity_names_roles = set(
+        }
+
+        entity_names_roles = {
             f"{entity['entity']}"
             f"{rasa.shared.core.constants.ENTITY_LABEL_SEPARATOR}{entity['role']}"
             for entity in entities
             if "entity" in entity.keys() and "role" in entity.keys()
-        )
-        entity_names_groups = set(
+        }
+
+        entity_names_groups = {
             f"{entity['entity']}"
             f"{rasa.shared.core.constants.ENTITY_LABEL_SEPARATOR}{entity['group']}"
             for entity in entities
             if "entity" in entity.keys() and "group" in entity.keys()
-        )
+        }
+
         entity_names = entity_names_basic.union(entity_names_roles, entity_names_groups)
 
         # the USED_ENTITIES_KEY of an intent also contains the entity labels and the
@@ -1307,7 +1308,7 @@ class Domain:
                 # don't change the fact whether dialogue turn should be hidden
                 if (
                     not tr.followup_action
-                    and not tr.latest_action_name == tr.active_loop_name
+                    and tr.latest_action_name != tr.active_loop_name
                 ):
                     turn_was_hidden = hide_rule_turn
 
@@ -1342,38 +1343,37 @@ class Domain:
         Returns:
             A list of `SlotSet` events.
         """
-        if self.store_entities_as_slots:
-            slot_events = []
-
-            for slot in self.slots:
-                matching_entities = []
-
-                for mapping in slot.mappings:
-                    if mapping[MAPPING_TYPE] != str(
-                        SlotMappingType.FROM_ENTITY
-                    ) or mapping.get(MAPPING_CONDITIONS):
-                        continue
-
-                    for entity in entities:
-                        if (
-                            entity.get(ENTITY_ATTRIBUTE_TYPE)
-                            == mapping.get(ENTITY_ATTRIBUTE_TYPE)
-                            and entity.get(ENTITY_ATTRIBUTE_ROLE)
-                            == mapping.get(ENTITY_ATTRIBUTE_ROLE)
-                            and entity.get(ENTITY_ATTRIBUTE_GROUP)
-                            == mapping.get(ENTITY_ATTRIBUTE_GROUP)
-                        ):
-                            matching_entities.append(entity.get("value"))
-
-                if matching_entities:
-                    if isinstance(slot, ListSlot):
-                        slot_events.append(SlotSet(slot.name, matching_entities))
-                    else:
-                        slot_events.append(SlotSet(slot.name, matching_entities[-1]))
-
-            return slot_events
-        else:
+        if not self.store_entities_as_slots:
             return []
+        slot_events = []
+
+        for slot in self.slots:
+            matching_entities = []
+
+            for mapping in slot.mappings:
+                if mapping[MAPPING_TYPE] != str(
+                    SlotMappingType.FROM_ENTITY
+                ) or mapping.get(MAPPING_CONDITIONS):
+                    continue
+
+                for entity in entities:
+                    if (
+                        entity.get(ENTITY_ATTRIBUTE_TYPE)
+                        == mapping.get(ENTITY_ATTRIBUTE_TYPE)
+                        and entity.get(ENTITY_ATTRIBUTE_ROLE)
+                        == mapping.get(ENTITY_ATTRIBUTE_ROLE)
+                        and entity.get(ENTITY_ATTRIBUTE_GROUP)
+                        == mapping.get(ENTITY_ATTRIBUTE_GROUP)
+                    ):
+                        matching_entities.append(entity.get("value"))
+
+            if matching_entities:
+                if isinstance(slot, ListSlot):
+                    slot_events.append(SlotSet(slot.name, matching_entities))
+                else:
+                    slot_events.append(SlotSet(slot.name, matching_entities[-1]))
+
+        return slot_events
 
     def persist_specification(self, model_path: Text) -> None:
         """Persist the domain specification to storage."""
@@ -1490,11 +1490,8 @@ class Domain:
             # `use_entities` and `ignore_entities` in the domain file do not consider
             # the role and group labels remove them from the list to make sure to not
             # put them into the domain file
-            use_entities = set(
-                entity
-                for entity in intent_props[USED_ENTITIES_KEY]
-                if rasa.shared.core.constants.ENTITY_LABEL_SEPARATOR not in entity
-            )
+            use_entities = {entity for entity in intent_props[USED_ENTITIES_KEY]
+                        if rasa.shared.core.constants.ENTITY_LABEL_SEPARATOR not in entity}
             ignore_entities = set(self.entities) - use_entities
             if len(use_entities) == len(self.entities):
                 intent_props[USE_ENTITIES_KEY] = True

@@ -28,9 +28,8 @@ class MattermostBot(OutputChannel):
         r = requests.post(url + "/users/login", data=json.dumps(data))
         if r.status_code == 200:
             return r.headers["Token"]
-        else:
-            logger.error(f"Failed to login mattermost user {user}. Response: {r}")
-            return None
+        logger.error(f"Failed to login mattermost user {user}. Response: {r}")
+        return None
 
     def __init__(
         self, url: Text, token: Text, bot_channel: Text, webhook_url: Optional[Text]
@@ -52,7 +51,7 @@ class MattermostBot(OutputChannel):
 
         headers = {"Authorization": "Bearer " + self.token}
         r = requests.post(self.url + "/posts", headers=headers, data=json.dumps(data))
-        if not r.status_code == 200:
+        if r.status_code != 200:
             logger.error(
                 f"Failed to send message to mattermost channel "
                 f"{data.get('channel_id')}. Response: {r}"
@@ -156,11 +155,7 @@ class MattermostInput(InputChannel):
         # splitting to get rid of the @botmention
         # trigger we are using for this
         split_message = output["text"].split(" ", 1)
-        if len(split_message) >= 2:
-            message = split_message[1]
-        else:
-            message = output["text"]
-
+        message = split_message[1] if len(split_message) >= 2 else output["text"]
         await self._handle_message(
             message, output["user_id"], output["channel_id"], metadata, on_new_message
         )

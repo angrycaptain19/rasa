@@ -862,11 +862,11 @@ class SQLTrackerStore(TrackerStore):
         from urllib import parse
 
         # Users might specify a url in the host
-        if host and "://" in host:
-            # assumes this is a complete database host name including
-            # e.g. `postgres://...`
-            return host
-        elif host:
+        if host:
+            if "://" in host:
+                # assumes this is a complete database host name including
+                # e.g. `postgres://...`
+                return host
             # add fake scheme to properly parse components
             parsed = parse.urlsplit(f"scheme://{host}")
 
@@ -880,7 +880,7 @@ class SQLTrackerStore(TrackerStore):
             password,
             host,
             port,
-            database=login_db if login_db else db,
+            database=login_db or db,
             query=query,
         )
 
@@ -888,7 +888,7 @@ class SQLTrackerStore(TrackerStore):
         """Creates database `db` and updates engine accordingly."""
         from sqlalchemy import create_engine
 
-        if not self.engine.dialect.name == "postgresql":
+        if self.engine.dialect.name != "postgresql":
             rasa.shared.utils.io.raise_warning(
                 "The parameter 'login_db' can only be used with a postgres database."
             )
@@ -983,7 +983,7 @@ class SQLTrackerStore(TrackerStore):
 
             events = [json.loads(event.data) for event in serialised_events]
 
-            if self.domain and len(events) > 0:
+            if self.domain and events:
                 logger.debug(f"Recreating tracker from sender id '{sender_id}'")
                 return DialogueStateTracker.from_dict(
                     sender_id, events, self.domain.slots

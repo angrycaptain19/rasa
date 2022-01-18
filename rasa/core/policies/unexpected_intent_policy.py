@@ -451,13 +451,14 @@ class UnexpecTEDIntentPolicy(TEDPolicy):
         """
         trackers_for_training = []
         for tracker in trackers:
-            tracker_compatible = True
-            for event in tracker.applied_events():
-                if (isinstance(event, UserUttered) and event.intent_name is None) or (
+            tracker_compatible = not any(
+                (isinstance(event, UserUttered) and event.intent_name is None)
+                or (
                     isinstance(event, ActionExecuted) and event.action_name is None
-                ):
-                    tracker_compatible = False
-                    break
+                )
+                for event in tracker.applied_events()
+            )
+
             if tracker_compatible:
                 trackers_for_training.append(tracker)
         return trackers_for_training
@@ -970,9 +971,7 @@ class IntentTED(TED):
             tf.int32,
         )
 
-        labels_embed = tf.gather(all_labels_embed, indices_to_gather)
-
-        return labels_embed
+        return tf.gather(all_labels_embed, indices_to_gather)
 
     def run_bulk_inference(self, model_data: RasaModelData) -> Dict[Text, np.ndarray]:
         """Computes model's predictions for input data.

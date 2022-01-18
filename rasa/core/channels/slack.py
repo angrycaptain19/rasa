@@ -230,10 +230,8 @@ class SlackInput(InputChannel):
     def _is_user_message(slack_event: Dict[Text, Any]) -> bool:
         return (
             slack_event.get("event") is not None
-            and (
-                slack_event.get("event", {}).get("type") == "message"
-                or slack_event.get("event", {}).get("type") == "app_mention"
-            )
+            and slack_event.get("event", {}).get("type")
+            in ["message", "app_mention"]
             and slack_event.get("event", {}).get("text")
             and not slack_event.get("event", {}).get("bot_id")
         )
@@ -288,19 +286,19 @@ class SlackInput(InputChannel):
     def _is_interactive_message(payload: Dict) -> bool:
         """Check wheter the input is a supported interactive input type."""
 
-        supported = [
-            "button",
-            "select",
-            "static_select",
-            "external_select",
-            "conversations_select",
-            "users_select",
-            "channels_select",
-            "overflow",
-            "datepicker",
-        ]
         if payload.get("actions"):
             action_type = payload["actions"][0].get("type")
+            supported = [
+                "button",
+                "select",
+                "static_select",
+                "external_select",
+                "conversations_select",
+                "users_select",
+                "channels_select",
+                "overflow",
+                "datepicker",
+            ]
             if action_type in supported:
                 return True
             elif action_type:
@@ -361,10 +359,7 @@ class SlackInput(InputChannel):
 
         if metadata is not None:
             output_channel = metadata.get("out_channel")
-            if self.use_threads:
-                thread_id = metadata.get("thread_id")
-            else:
-                thread_id = None
+            thread_id = metadata.get("thread_id") if self.use_threads else None
         else:
             output_channel = None
             thread_id = None
