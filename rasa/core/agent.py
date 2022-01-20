@@ -228,7 +228,7 @@ async def load_agent(
         lock_store = LockStore.create(endpoints.lock_store)
         generator = endpoints.nlg
         action_endpoint = endpoints.action
-        model_server = endpoints.model if endpoints.model else model_server
+        model_server = endpoints.model or model_server
         if endpoints.nlu:
             http_interpreter = RasaNLUHttpInterpreter(endpoints.nlu)
 
@@ -504,10 +504,7 @@ class Agent:
 
     def _set_fingerprint(self, fingerprint: Optional[Text] = None) -> None:
 
-        if fingerprint:
-            self.fingerprint = fingerprint
-        else:
-            self.fingerprint = uuid.uuid4().hex
+        self.fingerprint = fingerprint or uuid.uuid4().hex
 
     @staticmethod
     def _create_tracker_store(
@@ -523,10 +520,7 @@ class Agent:
 
     @staticmethod
     def _create_lock_store(store: Optional[LockStore]) -> LockStore:
-        if store is not None:
-            return store
-
-        return InMemoryLockStore()
+        return store if store is not None else InMemoryLockStore()
 
     def load_model_from_remote_storage(self, model_name: Text) -> None:
         """Loads an Agent from remote storage."""
