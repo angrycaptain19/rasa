@@ -735,36 +735,33 @@ class RemoteAction(Action):
             return bot_messages + evts
 
         except ClientResponseError as e:
-            if e.status == 400:
-                response_data = json.loads(e.text)
-                exception = ActionExecutionRejection(
-                    response_data["action_name"], response_data.get("error")
-                )
-                logger.error(exception.message)
-                raise exception
-            else:
-                raise RasaException("Failed to execute custom action.") from e
+            if e.status != 400:
+                raise RasaException('Failed to execute custom action.') from e
+            response_data = json.loads(e.text)
+            exception = ActionExecutionRejection(
+                response_data['action_name'], response_data.get('error')
+            )
 
+            logger.error(exception.message)
+            raise exception
         except aiohttp.ClientConnectionError as e:
             logger.error(
-                "Failed to run custom action '{}'. Couldn't connect "
-                "to the server at '{}'. Is the server running? "
-                "Error: {}".format(self.name(), self.action_endpoint.url, e)
+                (
+                    "Failed to run custom action '{}'. Couldn't connect to the server at '{}'. Is the server running? Error: {}".format(
+                        self.name(), self.action_endpoint.url, e
+                    )
+                )
             )
-            raise RasaException("Failed to execute custom action.")
 
+            raise RasaException('Failed to execute custom action.')
         except aiohttp.ClientError as e:
-            # not all errors have a status attribute, but
-            # helpful to log if they got it
-
-            # noinspection PyUnresolvedReferences
-            status = getattr(e, "status", None)
+            status = getattr(e, 'status', None)
             raise RasaException(
-                "Failed to run custom action '{}'. Action server "
-                "responded with a non 200 status code of {}. "
-                "Make sure your action server properly runs actions "
-                "and returns a 200 once the action is executed. "
-                "Error: {}".format(self.name(), status, e)
+                (
+                    "Failed to run custom action '{}'. Action server responded with a non 200 status code of {}. Make sure your action server properly runs actions and returns a 200 once the action is executed. Error: {}".format(
+                        self.name(), status, e
+                    )
+                )
             )
 
     def name(self) -> Text:
@@ -1009,15 +1006,13 @@ class ActionExtractSlots(Action):
     def _verify_mapping_conditions(
         mapping: Dict[Text, Any], tracker: "DialogueStateTracker", slot_name: Text
     ) -> bool:
-        if mapping.get(MAPPING_CONDITIONS) and mapping[MAPPING_TYPE] != str(
-            SlotMappingType.FROM_TRIGGER_INTENT
-        ):
-            if not ActionExtractSlots._matches_mapping_conditions(
+        return bool(
+            not mapping.get(MAPPING_CONDITIONS)
+            or mapping[MAPPING_TYPE] == str(SlotMappingType.FROM_TRIGGER_INTENT)
+            or ActionExtractSlots._matches_mapping_conditions(
                 mapping, tracker, slot_name
-            ):
-                return False
-
-        return True
+            )
+        )
 
     async def _run_custom_action(
         self,
@@ -1045,10 +1040,7 @@ class ActionExtractSlots(Action):
                     disallowed_types.add(event.type_name)
         except (RasaException, ClientResponseError) as e:
             logger.warning(
-                f"Failed to execute custom action '{custom_action}' "
-                f"as a result of error '{str(e)}'. The default action "
-                f"'{self.name()}' failed to fill slots with custom "
-                f"mappings."
+                f"Failed to execute custom action '{custom_action}' as a result of error '{e}'. The default action '{self.name()}' failed to fill slots with custom mappings."
             )
 
         for type_name in disallowed_types:
