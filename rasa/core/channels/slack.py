@@ -230,10 +230,8 @@ class SlackInput(InputChannel):
     def _is_user_message(slack_event: Dict[Text, Any]) -> bool:
         return (
             slack_event.get("event") is not None
-            and (
-                slack_event.get("event", {}).get("type") == "message"
-                or slack_event.get("event", {}).get("type") == "app_mention"
-            )
+            and slack_event.get("event", {}).get("type")
+            in ["message", "app_mention"]
             and slack_event.get("event", {}).get("text")
             and not slack_event.get("event", {}).get("bot_id")
         )
@@ -288,19 +286,19 @@ class SlackInput(InputChannel):
     def _is_interactive_message(payload: Dict) -> bool:
         """Check wheter the input is a supported interactive input type."""
 
-        supported = [
-            "button",
-            "select",
-            "static_select",
-            "external_select",
-            "conversations_select",
-            "users_select",
-            "channels_select",
-            "overflow",
-            "datepicker",
-        ]
         if payload.get("actions"):
             action_type = payload["actions"][0].get("type")
+            supported = [
+                "button",
+                "select",
+                "static_select",
+                "external_select",
+                "conversations_select",
+                "users_select",
+                "channels_select",
+                "overflow",
+                "datepicker",
+            ]
             if action_type in supported:
                 return True
             elif action_type:
@@ -361,10 +359,7 @@ class SlackInput(InputChannel):
 
         if metadata is not None:
             output_channel = metadata.get("out_channel")
-            if self.use_threads:
-                thread_id = metadata.get("thread_id")
-            else:
-                thread_id = None
+            thread_id = metadata.get("thread_id") if self.use_threads else None
         else:
             output_channel = None
             thread_id = None
@@ -402,44 +397,48 @@ class SlackInput(InputChannel):
         # Slack API sends either a JSON-encoded or a URL-encoded body depending on the
         # content
         if content_type == "application/json":
-            # if JSON-encoded message is received
-            slack_event = request.json
-            event = slack_event.get("event", {})
-            thread_id = event.get("thread_ts", event.get("ts"))
-
-            users = []
-            if "authed_users" in slack_event:
-                users = slack_event.get("authed_users")
-            elif (
-                "authorizations" in slack_event
-                and len(slack_event.get("authorizations")) > 0
-            ):
-                users.append(slack_event.get("authorizations")[0].get("user_id"))
-
-            return {
-                "out_channel": event.get("channel"),
-                "thread_id": thread_id,
-                "users": users,
-            }
-
+            return self._json_encoded_message_metadata(request)
         if content_type == "application/x-www-form-urlencoded":
-            # if URL-encoded message is received
-            output = request.form
-            payload = json.loads(output["payload"][0])
-            message = payload.get("message", {})
-            thread_id = message.get("thread_ts", message.get("ts"))
-
-            users = []
-            if payload.get("user", {}).get("id"):
-                users.append(payload.get("user", {}).get("id"))
-
-            return {
-                "out_channel": payload.get("channel", {}).get("id"),
-                "thread_id": thread_id,
-                "users": users,
-            }
-
+            return self._url_encoded_message_metadata(request)
         return {}
+
+    def _url_encoded_message_metadata(self, request):
+        # if URL-encoded message is received
+        output = request.form
+        payload = json.loads(output["payload"][0])
+        message = payload.get("message", {})
+        thread_id = message.get("thread_ts", message.get("ts"))
+
+        users = []
+        if payload.get("user", {}).get("id"):
+            users.append(payload.get("user", {}).get("id"))
+
+        return {
+            "out_channel": payload.get("channel", {}).get("id"),
+            "thread_id": thread_id,
+            "users": users,
+        }
+
+    def _json_encoded_message_metadata(self, request):
+        # if JSON-encoded message is received
+        slack_event = request.json
+        event = slack_event.get("event", {})
+        thread_id = event.get("thread_ts", event.get("ts"))
+
+        users = []
+        if "authed_users" in slack_event:
+            users = slack_event.get("authed_users")
+        elif (
+            "authorizations" in slack_event
+            and len(slack_event.get("authorizations")) > 0
+        ):
+            users.append(slack_event.get("authorizations")[0].get("user_id"))
+
+        return {
+            "out_channel": event.get("channel"),
+            "thread_id": thread_id,
+            "users": users,
+        }
 
     def is_request_from_slack_authentic(self, request: Request) -> bool:
         """Validate a request from Slack for its authenticity.

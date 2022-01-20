@@ -192,10 +192,7 @@ class HangoutsInput(InputChannel):
     @classmethod
     def from_credentials(cls, credentials: Optional[Dict[Text, Any]]) -> InputChannel:
 
-        if credentials:
-            return cls(credentials.get("project_id"))
-
-        return cls()
+        return cls(credentials.get("project_id")) if credentials else cls()
 
     def __init__(
         self,
