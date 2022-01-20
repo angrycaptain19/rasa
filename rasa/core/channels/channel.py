@@ -1,392 +1,130 @@
+import datetime
 import json
 import logging
-import uuid
-import jwt
-from sanic import Sanic, Blueprint
+import requests
+from sanic import Blueprint, response
 from sanic.request import Request
-from typing import (
-    Text,
-    List,
-    Dict,
-    Any,
-    Optional,
-    Callable,
-    Iterable,
-    Awaitable,
-    NoReturn,
-)
+from typing import Text, Dict, Any, List, Iterable, Callable, Awaitable, Optional
 
-from rasa.cli import utils as cli_utils
-from rasa.shared.constants import DOCS_BASE_URL, DEFAULT_SENDER_ID
-from rasa.core.constants import BEARER_TOKEN_PREFIX
-from rasa.shared.exceptions import RasaException
-
-try:
-    from urlparse import urljoin
-except ImportError:
-    from urllib.parse import urljoin
+from rasa.core.channels.channel import UserMessage, OutputChannel, InputChannel
+from sanic.response import HTTPResponse
 
 logger = logging.getLogger(__name__)
 
+MICROSOFT_OAUTH2_URL = "https://login.microsoftonline.com"
 
-class UserMessage:
-    """Represents an incoming message.
+MICROSOFT_OAUTH2_PATH = "botframework.com/oauth2/v2.0/token"
 
-    Includes the channel the responses should be sent to."""
+
+class BotFramework(OutputChannel):
+    """A Microsoft Bot Framework communication channel."""
+
+    token_expiration_date = datetime.datetime.now()
+
+    headers = None
+
+    @classmethod
+    def name(cls) -> Text:
+        return "botframework"
 
     def __init__(
         self,
-        text: Optional[Text] = None,
-        output_channel: Optional["OutputChannel"] = None,
-        sender_id: Optional[Text] = None,
-        parse_data: Dict[Text, Any] = None,
-        input_channel: Optional[Text] = None,
-        message_id: Optional[Text] = None,
-        metadata: Optional[Dict] = None,
+        app_id: Text,
+        app_password: Text,
+        conversation: Dict[Text, Any],
+        bot: Text,
+        service_url: Text,
     ) -> None:
-        """Creates a ``UserMessage`` object.
 
-        Args:
-            text: the message text content.
-            output_channel: the output channel which should be used to send
-                bot responses back to the user.
-            sender_id: the message owner ID.
-            parse_data: rasa data about the message.
-            input_channel: the name of the channel which received this message.
-            message_id: ID of the message.
-            metadata: additional metadata for this message.
-
-        """
-        self.text = text.strip() if text else text
-
-        if message_id is not None:
-            self.message_id = str(message_id)
-        else:
-            self.message_id = uuid.uuid4().hex
-
-        if output_channel is not None:
-            self.output_channel = output_channel
-        else:
-            self.output_channel = CollectingOutputChannel()
-
-        if sender_id is not None:
-            self.sender_id = str(sender_id)
-        else:
-            self.sender_id = DEFAULT_SENDER_ID
-
-        self.input_channel = input_channel
-
-        self.parse_data = parse_data
-        self.metadata = metadata
-
-
-def register(
-    input_channels: List["InputChannel"], app: Sanic, route: Optional[Text]
-) -> None:
-    """Registers input channel blueprints with Sanic."""
-
-    async def handler(message: UserMessage) -> None:
-        await app.agent.handle_message(message)
-
-    for channel in input_channels:
-        if route:
-            p = urljoin(route, channel.url_prefix())
-        else:
-            p = None
-        app.blueprint(channel.blueprint(handler), url_prefix=p)
-
-    app.input_channels = input_channels
-
-
-class InputChannel:
-    """Input channel base class."""
-
-    @classmethod
-    def name(cls) -> Text:
-        """Every input channel needs a name to identify it."""
-        return cls.__name__
-
-    @classmethod
-    def from_credentials(cls, credentials: Optional[Dict[Text, Any]]) -> "InputChannel":
-        return cls()
-
-    def url_prefix(self) -> Text:
-        return self.name()
-
-    def blueprint(
-        self, on_new_message: Callable[[UserMessage], Awaitable[Any]]
-    ) -> Blueprint:
-        """Defines a Sanic blueprint.
-
-        The blueprint will be attached to a running sanic server and handle
-        incoming routes it registered for."""
-        raise NotImplementedError("Component listener needs to provide blueprint.")
-
-    @classmethod
-    def raise_missing_credentials_exception(cls) -> NoReturn:
-        raise RasaException(
-            f"To use the {cls.name()} input channel, you need to "
-            f"pass a credentials file using '--credentials'. "
-            f"The argument should be a file path pointing to "
-            f"a yml file containing the {cls.name()} authentication "
-            f"information. Details in the docs: "
-            f"{DOCS_BASE_URL}/messaging-and-voice-channels/"
+        service_url = (
+            f"{service_url}/" if not service_url.endswith("/") else service_url
         )
 
-    def get_output_channel(self) -> Optional["OutputChannel"]:
-        """Create ``OutputChannel`` based on information provided by the input channel.
+        self.app_id = app_id
+        self.app_password = app_password
+        self.conversation = conversation
+        self.global_uri = f"{service_url}v3/"
+        self.bot = bot
 
-        Implementing this function is not required. If this function returns a valid
-        ``OutputChannel`` this can be used by Rasa to send bot responses to the user
-        without the user initiating an interaction.
-
-        Returns:
-            ``OutputChannel`` instance or ``None`` in case creating an output channel
-             only based on the information present in the ``InputChannel`` is not
-             possible.
-        """
-        pass
-
-    def get_metadata(self, request: Request) -> Optional[Dict[Text, Any]]:
-        """Extracts additional information from the incoming request.
-
-         Implementing this function is not required. However, it can be used to extract
-         metadata from the request. The return value is passed on to the
-         ``UserMessage`` object and stored in the conversation tracker.
-
-        Args:
-            request: incoming request with the message of the user
-
-        Returns:
-            Metadata which was extracted from the request.
-        """
-        pass
-
-
-def decode_jwt(bearer_token: Text, jwt_key: Text, jwt_algorithm: Text) -> Dict:
-    """Decodes a Bearer Token using the specific JWT key and algorithm.
-
-    Args:
-        bearer_token: Encoded Bearer token
-        jwt_key: Public JWT key for decoding the Bearer token
-        jwt_algorithm: JWT algorithm used for decoding the Bearer token
-
-    Returns:
-        `Dict` containing the decoded payload if successful or an exception
-        if unsuccessful
-    """
-    authorization_header_value = bearer_token.replace(BEARER_TOKEN_PREFIX, "")
-    return jwt.decode(authorization_header_value, jwt_key, algorithms=jwt_algorithm)
-
-
-def decode_bearer_token(
-    bearer_token: Text, jwt_key: Text, jwt_algorithm: Text
-) -> Optional[Dict]:
-    """Decodes a Bearer Token using the specific JWT key and algorithm.
-
-    Args:
-        bearer_token: Encoded Bearer token
-        jwt_key: Public JWT key for decoding the Bearer token
-        jwt_algorithm: JWT algorithm used for decoding the Bearer token
-
-    Returns:
-        `Dict` containing the decoded payload if successful or `None` if unsuccessful
-    """
-    # noinspection PyBroadException
-    try:
-        return decode_jwt(bearer_token, jwt_key, jwt_algorithm)
-    except jwt.exceptions.InvalidSignatureError:
-        logger.error("JWT public key invalid.")
-    except Exception:
-        logger.exception("Failed to decode bearer token.")
-
-    return None
-
-
-class OutputChannel:
-    """Output channel base class.
-
-    Provides sane implementation of the send methods
-    for text only output channels.
-    """
-
-    @classmethod
-    def name(cls) -> Text:
-        """Every output channel needs a name to identify it."""
-        return cls.__name__
-
-    async def send_response(self, recipient_id: Text, message: Dict[Text, Any]) -> None:
-        """Send a message to the client."""
-
-        if message.get("quick_replies"):
-            await self.send_quick_replies(
-                recipient_id,
-                message.pop("text"),
-                message.pop("quick_replies"),
-                **message,
-            )
-        elif message.get("buttons"):
-            await self.send_text_with_buttons(
-                recipient_id, message.pop("text"), message.pop("buttons"), **message
-            )
-        elif message.get("text"):
-            await self.send_text_message(recipient_id, message.pop("text"), **message)
-
-        if message.get("custom"):
-            await self.send_custom_json(recipient_id, message.pop("custom"), **message)
-
-        # if there is an image we handle it separately as an attachment
-        if message.get("image"):
-            await self.send_image_url(recipient_id, message.pop("image"), **message)
-
-        if message.get("attachment"):
-            await self.send_attachment(
-                recipient_id, message.pop("attachment"), **message
-            )
-
-        if message.get("elements"):
-            await self.send_elements(recipient_id, message.pop("elements"), **message)
-
-    async def send_text_message(
-        self, recipient_id: Text, text: Text, **kwargs: Any
-    ) -> None:
-        """Send a message through this channel."""
-
-        raise NotImplementedError(
-            "Output channel needs to implement a send message for simple texts."
-        )
-
-    async def send_image_url(
-        self, recipient_id: Text, image: Text, **kwargs: Any
-    ) -> None:
-        """Sends an image. Default will just post the url as a string."""
-
-        await self.send_text_message(recipient_id, f"Image: {image}")
-
-    async def send_attachment(
-        self, recipient_id: Text, attachment: Text, **kwargs: Any
-    ) -> None:
-        """Sends an attachment. Default will just post as a string."""
-
-        await self.send_text_message(recipient_id, f"Attachment: {attachment}")
-
-    async def send_text_with_buttons(
-        self,
-        recipient_id: Text,
-        text: Text,
-        buttons: List[Dict[Text, Any]],
-        **kwargs: Any,
-    ) -> None:
-        """Sends buttons to the output.
-
-        Default implementation will just post the buttons as a string."""
-
-        await self.send_text_message(recipient_id, text)
-        for idx, button in enumerate(buttons):
-            button_msg = cli_utils.button_to_string(button, idx)
-            await self.send_text_message(recipient_id, button_msg)
-
-    async def send_quick_replies(
-        self,
-        recipient_id: Text,
-        text: Text,
-        quick_replies: List[Dict[Text, Any]],
-        **kwargs: Any,
-    ) -> None:
-        """Sends quick replies to the output.
-
-        Default implementation will just send as buttons."""
-
-        await self.send_text_with_buttons(recipient_id, text, quick_replies)
-
-    async def send_elements(
-        self, recipient_id: Text, elements: Iterable[Dict[Text, Any]], **kwargs: Any
-    ) -> None:
-        """Sends elements to the output.
-
-        Default implementation will just post the elements as a string."""
-
-        for element in elements:
-            element_msg = "{title} : {subtitle}".format(
-                title=element.get("title", ""), subtitle=element.get("subtitle", "")
-            )
-            await self.send_text_with_buttons(
-                recipient_id, element_msg, element.get("buttons", [])
-            )
-
-    async def send_custom_json(
-        self, recipient_id: Text, json_message: Dict[Text, Any], **kwargs: Any
-    ) -> None:
-        """Sends json dict to the output channel.
-
-        Default implementation will just post the json contents as a string."""
-
-        await self.send_text_message(recipient_id, json.dumps(json_message))
-
-
-class CollectingOutputChannel(OutputChannel):
-    """Output channel that collects send messages in a list
-
-    (doesn't send them anywhere, just collects them)."""
-
-    def __init__(self) -> None:
-        self.messages = []
-
-    @classmethod
-    def name(cls) -> Text:
-        return "collector"
-
-    @staticmethod
-    def _message(
-        recipient_id: Text,
-        text: Text = None,
-        image: Text = None,
-        buttons: List[Dict[Text, Any]] = None,
-        attachment: Text = None,
-        custom: Dict[Text, Any] = None,
-    ) -> Dict:
-        """Create a message object that will be stored."""
-
-        obj = {
-            "recipient_id": recipient_id,
-            "text": text,
-            "image": image,
-            "buttons": buttons,
-            "attachment": attachment,
-            "custom": custom,
+    async def _get_headers(self) -> Optional[Dict[Text, Any]]:
+        if BotFramework.token_expiration_date >= datetime.datetime.now():
+            return BotFramework.headers
+        uri = f"{MICROSOFT_OAUTH2_URL}/{MICROSOFT_OAUTH2_PATH}"
+        grant_type = "client_credentials"
+        scope = "https://api.botframework.com/.default"
+        payload = {
+            "client_id": self.app_id,
+            "client_secret": self.app_password,
+            "grant_type": grant_type,
+            "scope": scope,
         }
 
-        # filter out any values that are `None`
-        return {k: v for k, v in obj.items() if v is not None}
+        token_response = requests.post(uri, data=payload)
 
-    def latest_output(self) -> Optional[Dict[Text, Any]]:
-        if self.messages:
-            return self.messages[-1]
+        if token_response.ok:
+            token_data = token_response.json()
+            access_token = token_data["access_token"]
+            token_expiration = token_data["expires_in"]
+
+            delta = datetime.timedelta(seconds=int(token_expiration))
+            BotFramework.token_expiration_date = datetime.datetime.now() + delta
+
+            BotFramework.headers = {
+                "content-type": "application/json",
+                "Authorization": "Bearer %s" % access_token,
+            }
+            return BotFramework.headers
         else:
+            logger.error("Could not get BotFramework token")
             return None
 
-    async def _persist_message(self, message: Dict[Text, Any]) -> None:
-        self.messages.append(message)
+    def prepare_message(
+        self, recipient_id: Text, message_data: Dict[Text, Any]
+    ) -> Dict[Text, Any]:
+        data = {
+            "type": "message",
+            "recipient": {"id": recipient_id},
+            "from": self.bot,
+            "channelData": {"notification": {"alert": "true"}},
+            "text": "",
+        }
+        data.update(message_data)
+        return data
+
+    async def send(self, message_data: Dict[Text, Any]) -> None:
+        post_message_uri = "{}conversations/{}/activities".format(
+            self.global_uri, self.conversation["id"]
+        )
+        headers = await self._get_headers()
+        send_response = requests.post(
+            post_message_uri, headers=headers, data=json.dumps(message_data)
+        )
+
+        if not send_response.ok:
+            logger.error(
+                "Error trying to send botframework messge. Response: %s",
+                send_response.text,
+            )
 
     async def send_text_message(
         self, recipient_id: Text, text: Text, **kwargs: Any
     ) -> None:
         for message_part in text.strip().split("\n\n"):
-            await self._persist_message(self._message(recipient_id, text=message_part))
+            text_message = {"text": message_part}
+            message = self.prepare_message(recipient_id, text_message)
+            await self.send(message)
 
     async def send_image_url(
         self, recipient_id: Text, image: Text, **kwargs: Any
     ) -> None:
-        """Sends an image. Default will just post the url as a string."""
+        hero_content = {
+            "contentType": "application/vnd.microsoft.card.hero",
+            "content": {"images": [{"url": image}]},
+        }
 
-        await self._persist_message(self._message(recipient_id, image=image))
-
-    async def send_attachment(
-        self, recipient_id: Text, attachment: Text, **kwargs: Any
-    ) -> None:
-        """Sends an attachment. Default will just post as a string."""
-
-        await self._persist_message(self._message(recipient_id, attachment=attachment))
+        image_message = {"attachments": [hero_content]}
+        message = self.prepare_message(recipient_id, image_message)
+        await self.send(message)
 
     async def send_text_with_buttons(
         self,
@@ -395,11 +133,118 @@ class CollectingOutputChannel(OutputChannel):
         buttons: List[Dict[Text, Any]],
         **kwargs: Any,
     ) -> None:
-        await self._persist_message(
-            self._message(recipient_id, text=text, buttons=buttons)
-        )
+        hero_content = {
+            "contentType": "application/vnd.microsoft.card.hero",
+            "content": {"subtitle": text, "buttons": buttons},
+        }
+
+        buttons_message = {"attachments": [hero_content]}
+        message = self.prepare_message(recipient_id, buttons_message)
+        await self.send(message)
+
+    async def send_elements(
+        self, recipient_id: Text, elements: Iterable[Dict[Text, Any]], **kwargs: Any
+    ) -> None:
+        for e in elements:
+            message = self.prepare_message(recipient_id, e)
+            await self.send(message)
 
     async def send_custom_json(
         self, recipient_id: Text, json_message: Dict[Text, Any], **kwargs: Any
     ) -> None:
-        await self._persist_message(self._message(recipient_id, custom=json_message))
+        json_message.setdefault("type", "message")
+        json_message.setdefault("recipient", {}).setdefault("id", recipient_id)
+        json_message.setdefault("from", self.bot)
+        json_message.setdefault("channelData", {}).setdefault(
+            "notification", {}
+        ).setdefault("alert", "true")
+        json_message.setdefault("text", "")
+        await self.send(json_message)
+
+
+class BotFrameworkInput(InputChannel):
+    """Bot Framework input channel implementation."""
+
+    @classmethod
+    def name(cls) -> Text:
+        return "botframework"
+
+    @classmethod
+    def from_credentials(cls, credentials: Optional[Dict[Text, Any]]) -> InputChannel:
+        if not credentials:
+            cls.raise_missing_credentials_exception()
+
+        return cls(credentials.get("app_id"), credentials.get("app_password"))
+
+    def __init__(self, app_id: Text, app_password: Text) -> None:
+        """Create a Bot Framework input channel.
+
+        Args:
+            app_id: Bot Framework's API id
+            app_password: Bot Framework application secret
+        """
+
+        self.app_id = app_id
+        self.app_password = app_password
+
+    @staticmethod
+    def add_attachments_to_metadata(
+        postdata: Dict[Text, Any], metadata: Optional[Dict[Text, Any]]
+    ) -> Optional[Dict[Text, Any]]:
+        """Merge the values of `postdata['attachments']` with `metadata`."""
+
+        if postdata.get("attachments"):
+            attachments = {"attachments": postdata["attachments"]}
+            if metadata:
+                metadata.update(attachments)
+            else:
+                metadata = attachments
+
+        return metadata
+
+    def blueprint(
+        self, on_new_message: Callable[[UserMessage], Awaitable[Any]]
+    ) -> Blueprint:
+
+        botframework_webhook = Blueprint("botframework_webhook", __name__)
+
+        @botframework_webhook.route("/", methods=["GET"])
+        async def health(request: Request) -> HTTPResponse:
+            return response.json({"status": "ok"})
+
+        @botframework_webhook.route("/webhook", methods=["POST"])
+        async def webhook(request: Request) -> HTTPResponse:
+            postdata = request.json
+            metadata = self.get_metadata(request)
+
+            metadata_with_attachments = self.add_attachments_to_metadata(
+                postdata, metadata
+            )
+
+            try:
+                if postdata["type"] == "message":
+                    out_channel = BotFramework(
+                        self.app_id,
+                        self.app_password,
+                        postdata["conversation"],
+                        postdata["recipient"],
+                        postdata["serviceUrl"],
+                    )
+
+                    user_msg = UserMessage(
+                        text=postdata.get("text", ""),
+                        output_channel=out_channel,
+                        sender_id=postdata["from"]["id"],
+                        input_channel=self.name(),
+                        metadata=metadata_with_attachments,
+                    )
+
+                    await on_new_message(user_msg)
+                else:
+                    logger.info("Not received message type")
+            except Exception as e:
+                logger.error(f'Exception when trying to handle message.{e}')
+                logger.debug(e, exc_info=True)
+            return response.text("success")
+
+        return botframework_webhook
