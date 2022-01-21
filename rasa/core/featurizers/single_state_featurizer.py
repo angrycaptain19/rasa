@@ -187,9 +187,10 @@ class SingleStateFeaturizer:
     ) -> Dict[Text, List[Features]]:
 
         # Remove entities from possible attributes
-        attributes = set(
+        attributes = {
             attribute for attribute in sub_state.keys() if attribute != ENTITIES
-        )
+        }
+
 
         if precomputations is not None:
 

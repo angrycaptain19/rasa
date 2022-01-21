@@ -108,20 +108,19 @@ def print_run_or_instructions(args: argparse.Namespace) -> None:
         args.port = constants.DEFAULT_SERVER_PORT
 
         shell(args)
+    elif args.no_prompt:
+        print(
+            "If you want to speak to the assistant, "
+            "run 'rasa shell' at any time inside "
+            "the project directory."
+        )
     else:
-        if args.no_prompt:
-            print(
-                "If you want to speak to the assistant, "
-                "run 'rasa shell' at any time inside "
-                "the project directory."
-            )
-        else:
-            print_success(
-                "Ok 👍🏼. "
-                "If you want to speak to the assistant, "
-                "run 'rasa shell' at any time inside "
-                "the project directory."
-            )
+        print_success(
+            "Ok 👍🏼. "
+            "If you want to speak to the assistant, "
+            "run 'rasa shell' at any time inside "
+            "the project directory."
+        )
 
 
 def init_project(args: argparse.Namespace, path: Text) -> None:
@@ -160,7 +159,7 @@ def _ask_create_path(path: Text) -> None:
     if should_create:
         try:
             os.makedirs(path)
-        except (PermissionError, OSError, FileExistsError) as e:
+        except (PermissionError, OSError) as e:
             print_error_and_exit(
                 f"Failed to create project path at '{path}'. " f"Error: {e}"
             )

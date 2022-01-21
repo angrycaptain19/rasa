@@ -124,8 +124,7 @@ def _migrate_auto_fill(
         mappings = properties.get(SLOT_MAPPINGS, [])
         if from_entity_mapping not in mappings:
             mappings.append(from_entity_mapping)
-            properties.update({SLOT_MAPPINGS: mappings})
-
+            properties[SLOT_MAPPINGS] = mappings
     if "auto_fill" in properties:
         del properties["auto_fill"]
 
@@ -136,8 +135,7 @@ def _migrate_custom_slots(
     slot_name: Text, properties: Dict[Text, Any]
 ) -> Dict[Text, Any]:
     if not properties.get("mappings"):
-        properties.update({"mappings": [{"type": "custom"}]})
-
+        properties["mappings"] = [{"type": "custom"}]
         rasa.shared.utils.io.raise_warning(
             f"A custom mapping was added to slot '{slot_name}'. "
             f"Please double-check this is correct.",
@@ -168,13 +166,13 @@ def _assemble_new_domain(
     new_domain: Dict[Text, Any] = {}
     for key, value in original_content.items():
         if key == KEY_SLOTS:
-            new_domain.update({key: new_slots})
+            new_domain[key] = new_slots
         elif key == KEY_FORMS:
             new_domain.update({key: new_forms})
         elif key == "version":
-            new_domain.update({key: '"3.0"'})
+            new_domain[key] = '"3.0"'
         else:
-            new_domain.update({key: value})
+            new_domain[key] = value
     return new_domain
 
 
@@ -303,13 +301,12 @@ def migrate_domain_format(
                 f"'{out_path}' because that folder is not empty."
                 "Please remove the contents of the folder and try again."
             )
-    else:
-        if out_path.is_file():
-            raise RasaException(
-                f"The domain could not be migrated to "
-                f"'{out_path}' because that file already exists."
-                "Please remove the file and try again."
-            )
+    elif out_path.is_file():
+        raise RasaException(
+            f"The domain could not be migrated to "
+            f"'{out_path}' because that file already exists."
+            "Please remove the file and try again."
+        )
 
     # Sanity Check: Assert the files to be migrated aren't in 3.0 format already
     # Note: we do not enforce that the version tag is 2.0 everywhere + validate that
@@ -326,10 +323,9 @@ def migrate_domain_format(
     ]
     if migrated_files:
         raise RasaException(
-            f"Some of the given files ({[file for file in migrated_files]}) "
-            f"have already been migrated to Rasa 3.0 format. Please remove these "
-            f"migrated files (or replace them with files in 2.0 format) and try again."
+            f'Some of the given files ({list(migrated_files)}) have already been migrated to Rasa 3.0 format. Please remove these migrated files (or replace them with files in 2.0 format) and try again.'
         )
+
 
     # Validate given domain file(s) and migrate them
     try:
@@ -342,12 +338,12 @@ def migrate_domain_format(
             original_domain = _migrate_domain_files(
                 domain_path, backup_location, out_path
             )
+        elif not Domain.is_domain_file(domain_path):
+            raise RasaException(
+                f"The file '{domain_path}' could not be validated as a "
+                f"domain file. Only domain yaml files can be migrated. "
+            )
         else:
-            if not Domain.is_domain_file(domain_path):
-                raise RasaException(
-                    f"The file '{domain_path}' could not be validated as a "
-                    f"domain file. Only domain yaml files can be migrated. "
-                )
             original_domain = _create_back_up(domain_path, backup_location)
 
         new_forms, updated_slots = _migrate_form_slots(original_domain)
@@ -356,10 +352,9 @@ def migrate_domain_format(
         _write_final_domain(domain_path, new_forms, new_slots, out_path)
 
         rasa.shared.utils.cli.print_success(
-            f"Your domain file '{str(domain_path)}' was successfully migrated! "
-            f"The migrated version is now '{str(out_path)}'. "
-            f"The original domain file is backed-up at '{str(backup_location)}'."
+            f"Your domain file '{domain_path}' was successfully migrated! The migrated version is now '{out_path}'. The original domain file is backed-up at '{backup_location}'."
         )
+
 
     except Exception as e:
         # Remove the backups if migration couldn't be completed

@@ -87,12 +87,10 @@ class CallbackNaturalLanguageGenerator(NaturalLanguageGenerator):
         from jsonschema import ValidationError
 
         try:
-            if content is None or content == "":
-                # means the endpoint did not want to respond with anything
-                return True
-            else:
+            if content is not None and content != "":
                 validate(content, nlg_response_format_spec())
-                return True
+            # means the endpoint did not want to respond with anything
+            return True
         except ValidationError as e:
             raise RasaException(
                 f"{e.message}. Failed to validate NLG response from API, make sure "

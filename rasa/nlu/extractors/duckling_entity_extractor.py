@@ -22,15 +22,14 @@ logger = logging.getLogger(__name__)
 
 
 def extract_value(match: Dict[Text, Any]) -> Dict[Text, Any]:
-    if match["value"].get("type") == "interval":
-        value = {
+    return (
+        {
             "to": match["value"].get("to", {}).get("value"),
             "from": match["value"].get("from", {}).get("value"),
         }
-    else:
-        value = match["value"].get("value")
-
-    return value
+        if match["value"].get("type") == "interval"
+        else match["value"].get("value")
+    )
 
 
 def convert_duckling_format_to_rasa(
@@ -142,14 +141,13 @@ class DucklingEntityExtractor(GraphComponent, EntityExtractorMixin):
             )
             if response.status_code == 200:
                 return response.json()
-            else:
-                logger.error(
-                    f"Failed to get a proper response from remote "
-                    f"duckling at '{parse_url}. "
-                    f"Status Code: {response.status_code}. "
-                    f"Response: {response.text}"
-                )
-                return []
+            logger.error(
+                f"Failed to get a proper response from remote "
+                f"duckling at '{parse_url}. "
+                f"Status Code: {response.status_code}. "
+                f"Response: {response.text}"
+            )
+            return []
         except (
             requests.exceptions.ConnectionError,
             requests.exceptions.ReadTimeout,

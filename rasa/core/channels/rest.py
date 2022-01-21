@@ -113,29 +113,28 @@ class RestInput(InputChannel):
                     ),
                     content_type="text/event-stream",
                 )
-            else:
-                collector = CollectingOutputChannel()
-                # noinspection PyBroadException
-                try:
-                    await on_new_message(
-                        UserMessage(
-                            text,
-                            collector,
-                            sender_id,
-                            input_channel=input_channel,
-                            metadata=metadata,
-                        )
+            collector = CollectingOutputChannel()
+            # noinspection PyBroadException
+            try:
+                await on_new_message(
+                    UserMessage(
+                        text,
+                        collector,
+                        sender_id,
+                        input_channel=input_channel,
+                        metadata=metadata,
                     )
-                except CancelledError:
-                    logger.error(
-                        f"Message handling timed out for " f"user message '{text}'."
-                    )
-                except Exception:
-                    logger.exception(
-                        f"An exception occured while handling "
-                        f"user message '{text}'."
-                    )
-                return response.json(collector.messages)
+                )
+            except CancelledError:
+                logger.error(
+                    f"Message handling timed out for " f"user message '{text}'."
+                )
+            except Exception:
+                logger.exception(
+                    f"An exception occured while handling "
+                    f"user message '{text}'."
+                )
+            return response.json(collector.messages)
 
         return custom_webhook
 

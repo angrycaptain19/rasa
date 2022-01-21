@@ -173,7 +173,7 @@ class RulePolicy(MemoizationPolicy):
         Raises:
             `InvalidDomain` if this policy is incompatible with the domain
         """
-        fallback_action_name = config.get("core_fallback_action_name", None)
+        fallback_action_name = config.get("core_fallback_action_name")
         if (
             fallback_action_name
             and fallback_action_name not in domain.action_names_or_texts
@@ -341,10 +341,11 @@ class RulePolicy(MemoizationPolicy):
         if action_name and fingerprint_active_loops:
             # substitute `SHOULD_NOT_BE_SET` with `null` so that users
             # know what to put in their rules
-            fingerprint_active_loops = set(
+            fingerprint_active_loops = {
                 "null" if active_loop == SHOULD_NOT_BE_SET else active_loop
                 for active_loop in fingerprint_active_loops
-            )
+            }
+
             # add action_name to active loop so that users
             # know what to put in their rules
             fingerprint_active_loops.add(action_name)
@@ -548,14 +549,11 @@ class RulePolicy(MemoizationPolicy):
             or predicted_action_name != ACTION_LISTEN_NAME
         ):
             return False
-        for source in self.lookup[RULES]:
-            # remove rule only if another action is predicted after action_listen
-            if (
-                source.startswith(prediction_source[:-2])
-                and not prediction_source == source
-            ):
-                return True
-        return False
+        return any(
+            source.startswith(prediction_source[:-2])
+            and prediction_source != source
+            for source in self.lookup[RULES]
+        )
 
     def _check_prediction(
         self,
@@ -913,7 +911,7 @@ class RulePolicy(MemoizationPolicy):
         tracker: DialogueStateTracker,
     ) -> Tuple[Optional[Text], Optional[Text]]:
         if (
-            not tracker.latest_action_name == ACTION_LISTEN_NAME
+            tracker.latest_action_name != ACTION_LISTEN_NAME
             or not tracker.latest_message
         ):
             return None, None
@@ -992,7 +990,7 @@ class RulePolicy(MemoizationPolicy):
         """
         if (
             use_text_for_last_user_input
-            and not tracker.latest_action_name == ACTION_LISTEN_NAME
+            and tracker.latest_action_name != ACTION_LISTEN_NAME
         ):
             # make text prediction only directly after user utterance
             # because we've otherwise already decided whether to use
@@ -1206,11 +1204,8 @@ class RulePolicy(MemoizationPolicy):
             events=[LoopInterrupted(True)] if returning_from_unhappy_path else [],
             is_end_to_end_prediction=is_end_to_end_prediction,
             is_no_user_prediction=is_no_user_prediction,
-            hide_rule_turn=(
-                True
-                if prediction_source in self.lookup.get(RULES_NOT_IN_STORIES, [])
-                else False
-            ),
+            hide_rule_turn=prediction_source
+            in self.lookup.get(RULES_NOT_IN_STORIES, []),
         )
 
     def _default_predictions(self, domain: Domain) -> List[float]:

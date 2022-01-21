@@ -55,14 +55,12 @@ def load_data(resource_name: Text, language: Optional[Text] = "en") -> "Training
 
     data_sets = [_load(f, language) for f in files]
     data_sets = [ds for ds in data_sets if ds]
-    if len(data_sets) == 0:
-        training_data = TrainingData()
+    if not data_sets:
+        return TrainingData()
     elif len(data_sets) == 1:
-        training_data = data_sets[0]
+        return data_sets[0]
     else:
-        training_data = data_sets[0].merge(*data_sets[1:])
-
-    return training_data
+        return data_sets[0].merge(*data_sets[1:])
 
 
 def _reader_factory(fformat: Text) -> Optional["TrainingDataReader"]:

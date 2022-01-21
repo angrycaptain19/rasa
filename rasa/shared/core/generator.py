@@ -207,9 +207,7 @@ class TrackerWithCachedStates(DialogueStateTracker):
             elif isinstance(event, ActionReverted):
                 self._states_for_hashing.pop()  # removes the state after the action
                 self._states_for_hashing.pop()  # removes the state used for the action
-            elif isinstance(event, UserUtteranceReverted):
-                self.clear_states()
-            elif isinstance(event, Restarted):
+            elif isinstance(event, (UserUtteranceReverted, Restarted)):
                 self.clear_states()
             else:
                 self._states_for_hashing.pop()
@@ -779,7 +777,7 @@ class TrainingDataGenerator:
             #       checkpoints OR be the start of a conversation
             #       but not both.
             if STORY_START in {s.name for s in step.start_checkpoints}:
-                for i, e in enumerate(step.events):
+                for e in step.events:
                     if isinstance(e, UserUttered):
                         # if there is a user utterance, that means before the
                         # user uttered something there has to be

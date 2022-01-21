@@ -17,10 +17,9 @@ class RasaNLUHttpInterpreter:
 
     def __init__(self, endpoint_config: Optional[EndpointConfig] = None) -> None:
         """Initializes a `RasaNLUHttpInterpreter`."""
-        if endpoint_config:
-            self.endpoint_config = endpoint_config
-        else:
-            self.endpoint_config = EndpointConfig(constants.DEFAULT_SERVER_URL)
+        self.endpoint_config = endpoint_config or EndpointConfig(
+            constants.DEFAULT_SERVER_URL
+        )
 
     async def parse(self, message: UserMessage) -> Dict[Text, Any]:
         """Parse a text message.
@@ -67,13 +66,12 @@ class RasaNLUHttpInterpreter:
                 async with session.post(url, json=params) as resp:
                     if resp.status == 200:
                         return await resp.json()
-                    else:
-                        response_text = await resp.text()
-                        logger.error(
-                            f"Failed to parse text '{text}' using rasa NLU over "
-                            f"http. Error: {response_text}"
-                        )
-                        return None
+                    response_text = await resp.text()
+                    logger.error(
+                        f"Failed to parse text '{text}' using rasa NLU over "
+                        f"http. Error: {response_text}"
+                    )
+                    return None
         except Exception:  # skipcq: PYL-W0703
             # need to catch all possible exceptions when doing http requests
             # (timeouts, value errors, parser errors, ...)

@@ -159,9 +159,7 @@ class RegexEntityExtractor(GraphComponent, EntityExtractorMixin):
         """
         entities = []
 
-        flags = 0  # default flag
-        if not self.case_sensitive:
-            flags = re.IGNORECASE
+        flags = re.IGNORECASE if not self.case_sensitive else 0
 
         for pattern in self.patterns:
             matches = re.finditer(pattern["pattern"], message.get(TEXT), flags=flags)

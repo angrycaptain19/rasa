@@ -225,12 +225,14 @@ class EvaluationStore:
 
         Possible duplicates or differences in order should not matter.
         """
-        deduplicated_targets = set(
+        deduplicated_targets = {
             tuple(entity.items()) for entity in self.entity_targets
-        )
-        deduplicated_predictions = set(
+        }
+
+        deduplicated_predictions = {
             tuple(entity.items()) for entity in self.entity_predictions
-        )
+        }
+
         return deduplicated_targets != deduplicated_predictions
 
     def check_prediction_target_mismatch(self) -> bool:
@@ -254,12 +256,10 @@ class EvaluationStore:
         while it returns 1 if the target entity comes first.
         If target and predicted are aligned it returns 0
         """
-        pred = None
-        target = None
-        if i_pred < len(entity_predictions):
-            pred = entity_predictions[i_pred]
-        if i_target < len(entity_targets):
-            target = entity_targets[i_target]
+        pred = entity_predictions[i_pred] if i_pred < len(entity_predictions) else None
+
+        target = entity_targets[i_target] if i_target < len(entity_targets) else None
+
         if target and pred:
             # Check which entity has the lower "start" value
             if pred.get(ENTITY_ATTRIBUTE_START) < target.get(ENTITY_ATTRIBUTE_START):
@@ -504,7 +504,7 @@ def _get_full_retrieval_intent(parsed: Dict[Text, Any]) -> Text:
             .get(RESPONSE, {})
             .get(INTENT_RESPONSE_KEY)
         )
-        return full_retrieval_intent if full_retrieval_intent else base_intent
+        return full_retrieval_intent or base_intent
 
     # if specified, the response selector contains the base intent as key
     full_retrieval_intent = (
@@ -512,7 +512,7 @@ def _get_full_retrieval_intent(parsed: Dict[Text, Any]) -> Text:
         .get(RESPONSE, {})
         .get(INTENT_RESPONSE_KEY)
     )
-    return full_retrieval_intent if full_retrieval_intent else base_intent
+    return full_retrieval_intent or base_intent
 
 
 def _collect_user_uttered_predictions(
@@ -526,7 +526,7 @@ def _collect_user_uttered_predictions(
     # intent from the test story, may either be base intent or full retrieval intent
     base_intent = event.intent.get(INTENT_NAME_KEY)
     full_retrieval_intent = event.intent.get(FULL_RETRIEVAL_INTENT_NAME_KEY)
-    intent_gold = full_retrieval_intent if full_retrieval_intent else base_intent
+    intent_gold = full_retrieval_intent or base_intent
 
     # predicted intent: note that this is only the base intent at this point
     predicted_base_intent = predicted.get(INTENT, {}).get(INTENT_NAME_KEY)
@@ -651,12 +651,9 @@ def _get_predicted_action_name(
         and expected_action_name != predicted_action.name()
     ):
         full_retrieval_name = predicted_action.get_full_retrieval_name(partial_tracker)
-        predicted_action_name = (
-            full_retrieval_name if full_retrieval_name else predicted_action.name()
-        )
+        return full_retrieval_name or predicted_action.name()
     else:
-        predicted_action_name = predicted_action.name()
-    return predicted_action_name
+        return predicted_action.name()
 
 
 async def _run_action_prediction(
@@ -1012,16 +1009,15 @@ async def _collect_story_predictions(
 
 
 def _filter_step_events(step: StoryStep) -> StoryStep:
-    events = []
-    for event in step.events:
-        if (
-            isinstance(event, WronglyPredictedAction)
-            and event.action_name
-            == event.action_name_prediction
-            == ACTION_UNLIKELY_INTENT_NAME
-        ):
-            continue
-        events.append(event)
+    events = [
+        event
+        for event in step.events
+        if not isinstance(event, WronglyPredictedAction)
+        or not event.action_name
+        == event.action_name_prediction
+        == ACTION_UNLIKELY_INTENT_NAME
+    ]
+
     updated_step = step.create_copy(use_new_id=False)
     updated_step.events = events
     return updated_step
@@ -1101,10 +1097,10 @@ async def test(
             # Add conversation level accuracy to story report.
             num_failed = len(story_evaluation.failed_stories)
             num_correct = len(story_evaluation.successful_stories)
-            num_warnings = len(story_evaluation.stories_with_warnings)
             num_convs = num_failed + num_correct
             if num_convs and isinstance(report, Dict):
                 conv_accuracy = num_correct / num_convs
+                num_warnings = len(story_evaluation.stories_with_warnings)
                 report["conversation_accuracy"] = {
                     "accuracy": conv_accuracy,
                     "correct": num_correct,

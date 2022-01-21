@@ -26,13 +26,12 @@ class LuisReader(JsonTrainingDataReader):
 
     @staticmethod
     def _extract_regex_features(js: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        regex_features: List[Dict[Text, Any]] = []
+        regex_features: List[Dict[Text, Any]] = [
+            {"name": r.get("name"), "pattern": r.get("pattern")}
+            for r in js.get("regex_features", [])
+            if r.get("activated", False)
+        ]
 
-        for r in js.get("regex_features", []):
-            if r.get("activated", False):
-                regex_features.append(
-                    {"name": r.get("name"), "pattern": r.get("pattern")}
-                )
 
         # LUIS removed `regex_features` and exports regular expressions in `
         # regex_entities` now:

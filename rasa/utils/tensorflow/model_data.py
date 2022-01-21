@@ -146,7 +146,7 @@ class FeatureArray(np.ndarray):
         self.number_of_dimensions = state[-3]
         self.is_sparse = state[-2]
         self.units = state[-1]
-        super(FeatureArray, self).__setstate__(state[0:-3], **kwargs)
+        super(FeatureArray, self).__setstate__(state[:-3], **kwargs)
 
     # pytype: enable=attribute-error
 
@@ -321,12 +321,13 @@ class RasaModelData:
         Returns:
             The simplified data.
         """
-        out_data = {}
-        for key, attribute_data in self.data.items():
-            out_data[key] = {}
-            for sub_key, features in attribute_data.items():
-                out_data[key][sub_key] = [feature[:1] for feature in features]
-        return out_data
+        return {
+            key: {
+                sub_key: [feature[:1] for feature in features]
+                for sub_key, features in attribute_data.items()
+            }
+            for key, attribute_data in self.data.items()
+        }
 
     def does_feature_exist(self, key: Text, sub_key: Optional[Text] = None) -> bool:
         """Check if feature key (and sub-key) is present and features are available.
@@ -393,7 +394,7 @@ class RasaModelData:
             return 0
 
         # check if number of examples is the same for all values
-        if not all(length == example_lengths[0] for length in example_lengths):
+        if any(length != example_lengths[0] for length in example_lengths):
             raise ValueError(
                 f"Number of examples differs for keys '{data.keys()}'. Number of "
                 f"examples should be the same for all data."
@@ -414,12 +415,11 @@ class RasaModelData:
         if key not in self.data or sub_key not in self.data[key]:
             return 0
 
-        units = 0
-        for features in self.data[key][sub_key]:
-            if len(features) > 0:
-                units += features.units
-
-        return units
+        return sum(
+            features.units
+            for features in self.data[key][sub_key]
+            if len(features) > 0
+        )
 
     def add_data(self, data: Data, key_prefix: Optional[Text] = None) -> None:
         """Add incoming data to data.

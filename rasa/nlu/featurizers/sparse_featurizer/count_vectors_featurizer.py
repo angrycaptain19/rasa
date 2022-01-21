@@ -343,13 +343,10 @@ class CountVectorsFeaturizer(SparseFeaturizer, GraphComponent):
     def _convert_attribute_tokens_to_texts(
         attribute_tokens: Dict[Text, List[List[Text]]]
     ) -> Dict[Text, List[Text]]:
-        attribute_texts = {}
-
-        for attribute in attribute_tokens.keys():
-            list_of_tokens = attribute_tokens[attribute]
-            attribute_texts[attribute] = [" ".join(tokens) for tokens in list_of_tokens]
-
-        return attribute_texts
+        return {
+            attribute: [" ".join(tokens) for tokens in list_of_tokens]
+            for attribute, list_of_tokens in attribute_tokens.items()
+        }
 
     def _update_vectorizer_vocabulary(
         self, attribute: Text, new_vocabulary: Set[Text]
@@ -554,19 +551,9 @@ class CountVectorsFeaturizer(SparseFeaturizer, GraphComponent):
         sequence_features = []
         sentence_features = []
 
-        for i, tokens in enumerate(all_tokens):
+        for tokens in all_tokens:
             if not tokens:
                 # nothing to featurize
-                sequence_features.append(None)
-                sentence_features.append(None)
-                continue
-
-            # vectorizer.transform returns a sparse matrix of size
-            # [n_samples, n_features]
-            # set input to list of tokens if sequence should be returned
-            # otherwise join all tokens to a single string and pass that as a list
-            if not tokens:
-                # attribute is not set (e.g. response not present)
                 sequence_features.append(None)
                 sentence_features.append(None)
                 continue
@@ -674,12 +661,9 @@ class CountVectorsFeaturizer(SparseFeaturizer, GraphComponent):
 
     def _collect_vectorizer_vocabularies(self) -> Dict[Text, Optional[Dict[Text, int]]]:
         """Gets vocabulary for all attributes."""
-        attribute_vocabularies = {}
-        for attribute in self._attributes:
-            attribute_vocabularies[attribute] = self._get_attribute_vocabulary(
+        return {attribute: self._get_attribute_vocabulary(
                 attribute
-            )
-        return attribute_vocabularies
+            ) for attribute in self._attributes}
 
     @staticmethod
     def _is_any_model_trained(
@@ -738,12 +722,10 @@ class CountVectorsFeaturizer(SparseFeaturizer, GraphComponent):
             vocabulary=vocabulary,
         )
 
-        attribute_vectorizers = {}
-
-        for attribute in cls._attributes_for(parameters["analyzer"]):
-            attribute_vectorizers[attribute] = shared_vectorizer
-
-        return attribute_vectorizers
+        return {
+            attribute: shared_vectorizer
+            for attribute in cls._attributes_for(parameters["analyzer"])
+        }
 
     @classmethod
     def _create_independent_vocab_vectorizers(

@@ -51,14 +51,11 @@ class Message:
         """Creates an instance of Message."""
         self.time = time
         self.data = data.copy() if data else {}
-        self.features = features if features else []
+        self.features = features or []
 
         self.data.update(**kwargs)
 
-        if output_properties:
-            self.output_properties = output_properties
-        else:
-            self.output_properties = set()
+        self.output_properties = output_properties or set()
         self.output_properties.add(TEXT)
 
     def add_features(self, features: Optional["Features"]) -> None:
@@ -190,11 +187,7 @@ class Message:
     def get_full_intent(self) -> Text:
         """Get intent as it appears in training data"""
 
-        return (
-            self.get(INTENT_RESPONSE_KEY)
-            if self.get(INTENT_RESPONSE_KEY)
-            else self.get(INTENT)
-        )
+        return self.get(INTENT_RESPONSE_KEY) or self.get(INTENT)
 
     @staticmethod
     def separate_intent_response_key(
@@ -433,10 +426,9 @@ class Message:
                 (self.data.get(INTENT) or self.data.get(RESPONSE))
                 and not self.data.get(TEXT)
             )
-            or (
-                self.data.get(TEXT)
-                and not (self.data.get(INTENT) or self.data.get(RESPONSE))
-            )
+            or self.data.get(TEXT)
+            and not self.data.get(INTENT)
+            and not self.data.get(RESPONSE)
         )
 
     def is_e2e_message(self) -> bool:

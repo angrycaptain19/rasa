@@ -142,7 +142,7 @@ class RasaDataGenerator(tf.keras.utils.Sequence):
             return array_of_dense.astype(np.float32)
 
         data_size = len(array_of_dense)
-        max_seq_len = max([x.shape[0] for x in array_of_dense])
+        max_seq_len = max(x.shape[0] for x in array_of_dense)
 
         data_padded = np.zeros(
             [data_size, max_seq_len, array_of_dense[0].shape[-1]],
@@ -180,12 +180,11 @@ class RasaDataGenerator(tf.keras.utils.Sequence):
             len(array_of_dense) for array_of_dense in array_of_array_of_dense
         )
         max_seq_len = max(
-            [
-                x.shape[0]
-                for array_of_dense in array_of_array_of_dense
-                for x in array_of_dense
-            ]
+            x.shape[0]
+            for array_of_dense in array_of_array_of_dense
+            for x in array_of_dense
         )
+
 
         data_padded = np.zeros(
             [combined_dialogue_len, max_seq_len, number_of_features],
@@ -193,7 +192,7 @@ class RasaDataGenerator(tf.keras.utils.Sequence):
         )
 
         current_sum_dialogue_len = 0
-        for i, array_of_dense in enumerate(array_of_array_of_dense):
+        for array_of_dense in array_of_array_of_dense:
             for j, dense in enumerate(array_of_dense):
                 data_padded[current_sum_dialogue_len + j, : dense.shape[0], :] = dense
             current_sum_dialogue_len += len(array_of_dense)
@@ -218,7 +217,7 @@ class RasaDataGenerator(tf.keras.utils.Sequence):
         if not isinstance(array_of_sparse[0], scipy.sparse.coo_matrix):
             array_of_sparse = [x.tocoo() for x in array_of_sparse]
 
-        max_seq_len = max([x.shape[0] for x in array_of_sparse])
+        max_seq_len = max(x.shape[0] for x in array_of_sparse)
 
         # get the indices of values
         indices = np.hstack(
@@ -281,12 +280,11 @@ class RasaDataGenerator(tf.keras.utils.Sequence):
         ]
         combined_dialogue_len = sum(dialogue_len)
         max_seq_len = max(
-            [
-                x.shape[0]
-                for array_of_sparse in array_of_array_of_sparse
-                for x in array_of_sparse
-            ]
+            x.shape[0]
+            for array_of_sparse in array_of_array_of_sparse
+            for x in array_of_sparse
         )
+
         # get the indices of values
         indices = np.hstack(
             [

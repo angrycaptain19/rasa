@@ -367,14 +367,13 @@ class Validator:
             for slot in form_slots:
                 if slot in domain_slot_names:
                     continue
-                else:
-                    rasa.shared.utils.io.raise_warning(
-                        f"The form slot '{slot}' in form '{form}' "
-                        f"is not present in the domain slots."
-                        f"Please add the correct slot or check for typos.",
-                        docs=DOCS_URL_DOMAINS,
-                    )
-                    everything_is_alright = False
+                rasa.shared.utils.io.raise_warning(
+                    f"The form slot '{slot}' in form '{form}' "
+                    f"is not present in the domain slots."
+                    f"Please add the correct slot or check for typos.",
+                    docs=DOCS_URL_DOMAINS,
+                )
+                everything_is_alright = False
 
         return everything_is_alright
 

@@ -161,11 +161,12 @@ class LexicalSyntacticFeaturizer(SparseFeaturizer, GraphComponent):
             f"Received {feature_config} instead. "
         )
         try:
-            configured_feature_names = set(
+            configured_feature_names = {
                 feature_name
                 for pos_config in feature_config
                 for feature_name in pos_config
-            )
+            }
+
         except TypeError as e:
             raise InvalidConfigException(message) from e
         if configured_feature_names.difference(cls.SUPPORTED_FEATURES):
@@ -189,11 +190,10 @@ class LexicalSyntacticFeaturizer(SparseFeaturizer, GraphComponent):
         """
         self._feature_to_idx_dict = feature_to_idx_dict
         self._number_of_features = sum(
-            [
-                len(feature_values.values())
-                for feature_values in self._feature_to_idx_dict.values()
-            ]
+            len(feature_values.values())
+            for feature_values in self._feature_to_idx_dict.values()
         )
+
         if check_consistency_with_config:
             known_features = set(self._feature_to_idx_dict.keys())
             not_in_config = known_features.difference(
@@ -248,11 +248,12 @@ class LexicalSyntacticFeaturizer(SparseFeaturizer, GraphComponent):
         )
         tokens_example = training_example.get(TOKENS_NAMES[TEXT], [])
 
-        configured_feature_names = set(
+        configured_feature_names = {
             feature_name
             for pos_config in self._feature_config
             for feature_name in pos_config
-        )
+        }
+
         if {"pos", "pos2"}.intersection(
             configured_feature_names
         ) and not tokens_example[0].data.get(POS_TAG_KEY, []):
@@ -279,7 +280,7 @@ class LexicalSyntacticFeaturizer(SparseFeaturizer, GraphComponent):
            *nested* mapping)
         """
         # collect all raw feature values
-        feature_vocabulary: Dict[Tuple[int, Text], Set[Text]] = dict()
+        feature_vocabulary: Dict[Tuple[int, Text], Set[Text]] = {}
         for example in training_data.training_examples:
             tokens = example.get(TOKENS_NAMES[TEXT], [])
             sentence_features = self._map_tokens_to_raw_features(tokens)

@@ -336,12 +336,11 @@ class EntityExtractorMixin(abc.ABC):
         interleaving_text = text[last_token_end : token.start]
         tokens_separated_by_allowed_chars = all(
             filter(
-                lambda char: True
-                if char in SINGLE_ENTITY_ALLOWED_INTERLEAVING_CHARSET
-                else False,
+                lambda char: char in SINGLE_ENTITY_ALLOWED_INTERLEAVING_CHARSET,
                 interleaving_text,
             )
         )
+
 
         # The current entity type must match with the config (default value is True)
         default_value = split_entities_config[SPLIT_ENTITIES_BY_COMMA]
@@ -367,9 +366,7 @@ class EntityExtractorMixin(abc.ABC):
         Returns:
             The tag value.
         """
-        if tag_name in tags:
-            return tags[tag_name][idx]
-        return NO_ENTITY_TAG
+        return tags[tag_name][idx] if tag_name in tags else NO_ENTITY_TAG
 
     @staticmethod
     def _create_new_entity(

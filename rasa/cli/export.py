@@ -111,10 +111,7 @@ def _get_requested_conversation_ids(
         `None` if that argument was left unspecified.
 
     """
-    if not conversation_ids_arg:
-        return None
-
-    return conversation_ids_arg.split(",")
+    return None if not conversation_ids_arg else conversation_ids_arg.split(",")
 
 
 def _assert_max_timestamp_is_greater_than_min_timestamp(

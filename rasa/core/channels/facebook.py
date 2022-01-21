@@ -160,7 +160,6 @@ class Messenger:
             logger.exception(
                 "Exception when trying to handle webhook for facebook message."
             )
-            pass
         finally:
             await out_channel.send_action(sender_id, sender_action="typing_off")
 
@@ -372,12 +371,11 @@ class FacebookInput(InputChannel):
         async def token_verification(request: Request) -> HTTPResponse:
             if request.args.get("hub.verify_token") == self.fb_verify:
                 return response.text(request.args.get("hub.challenge"))
-            else:
-                logger.warning(
-                    "Invalid fb verify token! Make sure this matches "
-                    "your webhook settings on the facebook app."
-                )
-                return response.text("failure, invalid token")
+            logger.warning(
+                "Invalid fb verify token! Make sure this matches "
+                "your webhook settings on the facebook app."
+            )
+            return response.text("failure, invalid token")
 
         @fb_webhook.route("/webhook", methods=["POST"])
         async def webhook(request: Request) -> HTTPResponse:

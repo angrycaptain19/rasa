@@ -84,7 +84,7 @@ class Checkpoint:
             conditions: Slot conditions for this checkpoint.
         """
         self.name = name
-        self.conditions = conditions if conditions else {}
+        self.conditions = conditions or {}
 
     def as_story_string(self) -> Text:
         dumped_conds = json.dumps(self.conditions) if self.conditions else ""
@@ -125,9 +125,9 @@ class StoryStep:
         source_name: Optional[Text] = None,
     ) -> None:
 
-        self.end_checkpoints = end_checkpoints if end_checkpoints else []
-        self.start_checkpoints = start_checkpoints if start_checkpoints else []
-        self.events = events if events else []
+        self.end_checkpoints = end_checkpoints or []
+        self.start_checkpoints = start_checkpoints or []
+        self.events = events or []
         self.block_name = block_name
         self.source_name = source_name
         # put a counter prefix to uuid to get reproducible sorting results
@@ -319,9 +319,7 @@ class RuleStep(StoryStep):
         super().__init__(
             block_name, start_checkpoints, end_checkpoints, events, source_name
         )
-        self.condition_events_indices = (
-            condition_events_indices if condition_events_indices else set()
-        )
+        self.condition_events_indices = condition_events_indices or set()
 
     def create_copy(self, use_new_id: bool) -> "StoryStep":
         copied = RuleStep(
@@ -380,7 +378,7 @@ class Story:
     def __init__(
         self, story_steps: List[StoryStep] = None, story_name: Optional[Text] = None
     ) -> None:
-        self.story_steps = story_steps if story_steps else []
+        self.story_steps = story_steps or []
         self.story_name = story_name
 
     @staticmethod
@@ -403,15 +401,12 @@ class Story:
         return Dialogue(sender_id, events)
 
     def as_story_string(self, flat: bool = False, e2e: bool = False) -> Text:
-        story_content = ""
-        for step in self.story_steps:
-            story_content += step.as_story_string(flat, e2e)
+        story_content = "".join(
+            step.as_story_string(flat, e2e) for step in self.story_steps
+        )
 
         if flat:
-            if self.story_name:
-                name = self.story_name
-            else:
-                name = "Generated Story {}".format(hash(story_content))
+            name = self.story_name or "Generated Story {}".format(hash(story_content))
             return f"## {name}\n{story_content}"
         else:
             return story_content
@@ -430,10 +425,7 @@ class StoryGraph:
         ordered_ids, cyclic_edges = StoryGraph.order_steps(story_steps)
         self.ordered_ids = ordered_ids
         self.cyclic_edge_ids = cyclic_edges
-        if story_end_checkpoints:
-            self.story_end_checkpoints = story_end_checkpoints
-        else:
-            self.story_end_checkpoints = {}
+        self.story_end_checkpoints = story_end_checkpoints or {}
 
     def __hash__(self) -> int:
         """Return hash for the story step.
@@ -637,10 +629,11 @@ class StoryGraph:
         """Checks if checkpoint with name and conditions is
         already in the list of checkpoints."""
 
-        for cp in cps:
-            if checkpoint_name == cp.name and conditions == cp.conditions:
-                return True
-        return False
+
+        return any(
+            checkpoint_name == cp.name and conditions == cp.conditions
+            for cp in cps
+        )
 
     @staticmethod
     def _find_unused_checkpoints(
@@ -834,9 +827,6 @@ def _cap_length(s: Text, char_limit: int = 20, append_ellipsis: bool = True) -> 
     Appends an ellipsis if the string is too long."""
 
     if len(s) > char_limit:
-        if append_ellipsis:
-            return s[: char_limit - 3] + "..."
-        else:
-            return s[:char_limit]
+        return s[: char_limit - 3] + "..." if append_ellipsis else s[:char_limit]
     else:
         return s

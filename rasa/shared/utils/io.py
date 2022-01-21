@@ -78,11 +78,7 @@ def raise_warning(
         """Function to format a warning the standard way."""
 
         if not should_show_source_line():
-            if docs:
-                line = f"More info at {docs}"
-            else:
-                line = ""
-
+            line = f"More info at {docs}" if docs else ""
         formatted_message = original_formatter(
             message, category, filename, lineno, line
         )

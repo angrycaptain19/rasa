@@ -43,9 +43,9 @@ class Token:
         """
         self.text = text
         self.start = start
-        self.end = end if end else start + len(text)
+        self.end = end or start + len(text)
 
-        self.data = data if data else {}
+        self.data = data or {}
         self.lemma = lemma or text
 
     def set(self, prop: Text, info: Any) -> None:
@@ -125,7 +125,7 @@ class Tokenizer(GraphComponent, abc.ABC):
             for attribute in MESSAGE_ATTRIBUTES:
                 if (
                     example.get(attribute) is not None
-                    and not example.get(attribute) == ""
+                    and example.get(attribute) != ""
                 ):
                     if attribute in [INTENT, ACTION_NAME, INTENT_RESPONSE_KEY]:
                         tokens = self._split_name(example, attribute)
@@ -152,13 +152,11 @@ class Tokenizer(GraphComponent, abc.ABC):
         return messages
 
     def _tokenize_on_split_symbol(self, text: Text) -> List[Text]:
-        words = (
+        return (
             text.split(self.intent_split_symbol)
             if self.intent_tokenization_flag
             else [text]
         )
-
-        return words
 
     def _split_name(self, message: Message, attribute: Text = INTENT) -> List[Token]:
         text = message.get(attribute)

@@ -65,8 +65,7 @@ def transform_to_seconds(duration: str) -> float:
         seconds = float(m_split[0].rstrip("s"))
     else:
         raise Exception(f"Unsupported duration: {duration}")
-    overall_seconds = hours * 60 * 60 + minutes * 60 + seconds
-    return overall_seconds
+    return hours * 60 * 60 + minutes * 60 + seconds
 
 
 def prepare_runtime_metrics() -> Dict[str, float]:
@@ -142,8 +141,7 @@ def prepare_tags() -> List[str]:
         "github_event": os.environ["GITHUB_EVENT_NAME"],
         "type": os.environ["TYPE"],
     }
-    tags_list = [f"{k}:{v}" for k, v in tags.items()]
-    return tags_list
+    return [f"{k}:{v}" for k, v in tags.items()]
 
 
 def send_to_datadog(results: List[Dict[str, Any]]) -> None:

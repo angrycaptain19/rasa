@@ -18,7 +18,7 @@ DEFAULT_MAX_HISTORY = None  # Core policy history is unbounded by default.
 
 DEFAULT_REQUEST_TIMEOUT = 60 * 5  # 5 minutes
 
-DEFAULT_RESPONSE_TIMEOUT = 60 * 60  # 1 hour
+DEFAULT_RESPONSE_TIMEOUT = 60**2
 
 DEFAULT_LOCK_LIFETIME = 60  # in seconds
 

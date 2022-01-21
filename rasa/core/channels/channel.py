@@ -69,11 +69,7 @@ class UserMessage:
         else:
             self.output_channel = CollectingOutputChannel()
 
-        if sender_id is not None:
-            self.sender_id = str(sender_id)
-        else:
-            self.sender_id = DEFAULT_SENDER_ID
-
+        self.sender_id = str(sender_id) if sender_id is not None else DEFAULT_SENDER_ID
         self.input_channel = input_channel
 
         self.parse_data = parse_data
@@ -360,10 +356,7 @@ class CollectingOutputChannel(OutputChannel):
         return {k: v for k, v in obj.items() if v is not None}
 
     def latest_output(self) -> Optional[Dict[Text, Any]]:
-        if self.messages:
-            return self.messages[-1]
-        else:
-            return None
+        return self.messages[-1] if self.messages else None
 
     async def _persist_message(self, message: Dict[Text, Any]) -> None:
         self.messages.append(message)

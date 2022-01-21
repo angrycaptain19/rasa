@@ -159,15 +159,15 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
         # Getting the slot values in the response variables
         response_vars = self._response_variables(filled_slots, kwargs)
 
-        keys_to_interpolate = [
-            "text",
-            "image",
-            "custom",
-            "buttons",
-            "attachment",
-            "quick_replies",
-        ]
         if response_vars:
+            keys_to_interpolate = [
+                "text",
+                "image",
+                "custom",
+                "buttons",
+                "attachment",
+                "quick_replies",
+            ]
             for key in keys_to_interpolate:
                 if key in response:
                     response[key] = interpolator.interpolate(
@@ -192,13 +192,14 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
     def _format_response_conditions(response_conditions: List[Dict[Text, Any]]) -> Text:
         formatted_response_conditions = [""]
         for index, condition in enumerate(response_conditions):
-            constraints = []
-            constraints.append(f"type: {str(condition['type'])}")
-            constraints.append(f"name: {str(condition['name'])}")
-            constraints.append(f"value: {str(condition['value'])}")
+            constraints = [
+                f'type: {condition["type"]}',
+                f'name: {condition["name"]}',
+                f'value: {condition["value"]}',
+            ]
 
             condition_message = " | ".join(constraints)
-            formatted_condition = f"[condition {str(index + 1)}] {condition_message}"
+            formatted_condition = f'[condition {index + 1}] {condition_message}'
             formatted_response_conditions.append(formatted_condition)
 
         return "\n".join(formatted_response_conditions)

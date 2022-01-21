@@ -131,9 +131,7 @@ class GraphSchema:
 
     def minimal_graph_schema(self, targets: Optional[List[Text]] = None) -> GraphSchema:
         """Returns a new schema where all nodes are a descendant of a target."""
-        dependencies = self._all_dependencies_schema(
-            targets if targets else self.target_names
-        )
+        dependencies = self._all_dependencies_schema(targets or self.target_names)
 
         return GraphSchema(
             {
@@ -372,7 +370,7 @@ class GraphNode:
             execution_context, node_name=self._node_name
         )
 
-        self._hooks: List[GraphNodeHook] = hooks if hooks else []
+        self._hooks: List[GraphNodeHook] = hooks or []
 
         self._component: Optional[GraphComponent] = None
         if self._eager:
@@ -403,11 +401,10 @@ class GraphNode:
                 raise GraphComponentException(
                     f"Error initializing graph component for node {self._node_name}."
                 ) from e
-            else:
-                logger.error(
-                    f"Error initializing graph component for node {self._node_name}."
-                )
-                raise
+            logger.error(
+                f"Error initializing graph component for node {self._node_name}."
+            )
+            raise
 
     def _get_resource(self, kwargs: Dict[Text, Any]) -> Resource:
         if "resource" in kwargs:
@@ -438,9 +435,10 @@ class GraphNode:
         """
         received_inputs: Dict[Text, Any] = dict(inputs_from_previous_nodes)
 
-        kwargs = {}
-        for input_name, input_node in self._inputs.items():
-            kwargs[input_name] = received_inputs[input_node]
+        kwargs = {
+            input_name: received_inputs[input_node]
+            for input_name, input_node in self._inputs.items()
+        }
 
         input_hook_outputs = self._run_before_hooks(kwargs)
 
@@ -471,11 +469,10 @@ class GraphNode:
                 raise GraphComponentException(
                     f"Error running graph component for node {self._node_name}."
                 ) from e
-            else:
-                logger.error(
-                    f"Error running graph component for node {self._node_name}."
-                )
-                raise
+            logger.error(
+                f"Error running graph component for node {self._node_name}."
+            )
+            raise
 
         self._run_after_hooks(input_hook_outputs, output)
 

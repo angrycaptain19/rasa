@@ -118,9 +118,7 @@ def _prepare_credentials_for_rasa_x(
     if rasa_x_url:
         credentials["rasa"] = {"url": rasa_x_url}
     dumped_credentials = yaml.dump(credentials, default_flow_style=False)
-    tmp_credentials = rasa.utils.io.create_temporary_file(dumped_credentials, "yml")
-
-    return tmp_credentials
+    return rasa.utils.io.create_temporary_file(dumped_credentials, "yml")
 
 
 def _overwrite_endpoints_for_local_x(
@@ -270,7 +268,7 @@ def _configure_logging(args: argparse.Namespace) -> None:
     logging.getLogger("pika").setLevel(logging.WARNING)
     logging.getLogger("socketio").setLevel(logging.ERROR)
 
-    if not log_level == logging.DEBUG:
+    if log_level != logging.DEBUG:
         logging.getLogger().setLevel(logging.WARNING)
         logging.getLogger("py.warnings").setLevel(logging.ERROR)
 
@@ -290,11 +288,9 @@ def is_rasa_project_setup(args: argparse.Namespace, project_path: Text) -> bool:
 
     mandatory_files = [config_path, domain_path]
 
-    for f in mandatory_files:
-        if not os.path.exists(os.path.join(project_path, f)):
-            return False
-
-    return True
+    return all(
+        os.path.exists(os.path.join(project_path, f)) for f in mandatory_files
+    )
 
 
 def _validate_rasa_x_start(args: argparse.Namespace, project_path: Text) -> None:
@@ -424,19 +420,15 @@ def run_in_production(args: argparse.Namespace) -> None:
 
 
 def _get_config_path(args: argparse.Namespace) -> Optional[Text]:
-    config_path = rasa.cli.utils.get_validated_path(
+    return rasa.cli.utils.get_validated_path(
         args.config, "config", DEFAULT_CONFIG_PATH
     )
 
-    return config_path
-
 
 def _get_domain_path(args: argparse.Namespace) -> Optional[Text]:
-    domain_path = rasa.cli.utils.get_validated_path(
+    return rasa.cli.utils.get_validated_path(
         args.domain, "domain", DEFAULT_DOMAIN_PATH
     )
-
-    return domain_path
 
 
 def _get_credentials_and_endpoints_paths(

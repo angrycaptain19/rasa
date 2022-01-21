@@ -377,10 +377,7 @@ class AlwaysEqualEventMixin(Event, ABC):
 
     def __eq__(self, other: Any) -> bool:
         """Compares object with other object."""
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-
-        return True
+        return NotImplemented if not isinstance(other, self.__class__) else True
 
 
 class SkipEventInMDStoryMixin(Event, ABC):
@@ -431,8 +428,8 @@ class UserUttered(Event):
 
         """
         self.text = text
-        self.intent = intent if intent else {}
-        self.entities = entities if entities else []
+        self.intent = intent or {}
+        self.entities = entities or []
         self.input_channel = input_channel
         self.message_id = message_id
 
@@ -972,14 +969,12 @@ class SlotSet(Event):
         cls, parameters: Dict[Text, Any]
     ) -> Optional[List["SlotSet"]]:
 
-        slots = []
-        for slot_key, slot_val in parameters.items():
-            slots.append(SlotSet(slot_key, slot_val))
+        slots = [
+            SlotSet(slot_key, slot_val)
+            for slot_key, slot_val in parameters.items()
+        ]
 
-        if slots:
-            return slots
-        else:
-            return None
+        return slots or None
 
     def as_dict(self) -> Dict[Text, Any]:
         """Returns serialized event."""

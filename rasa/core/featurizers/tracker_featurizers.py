@@ -354,10 +354,8 @@ class TrackerFeaturizer:
                 # don't add entities if text is used for featurization
                 if last_state.get(USER, {}).get(ENTITIES):
                     del last_state[USER][ENTITIES]
-            else:
-                # remove text features to only use intent
-                if last_state.get(USER, {}).get(TEXT):
-                    del last_state[USER][TEXT]
+            elif last_state.get(USER, {}).get(TEXT):
+                del last_state[USER][TEXT]
 
         # make sure that all dialogue steps are either intent or text based
         self._remove_user_text_if_intent(trackers_as_states)
@@ -557,14 +555,12 @@ class FullDialogueTrackerFeaturizer(TrackerFeaturizer):
                     # predicted at a stories start
                     actions.append(event.action_name or event.action_text)
                     entities.append(entity_data)
+                elif delete_first_state:
+                    raise InvalidStory(
+                        f"Found two unpredictable actions in one story "
+                        f"'{tracker.sender_id}'. Check your story files."
+                    )
                 else:
-                    # unpredictable actions can be
-                    # only the first in the story
-                    if delete_first_state:
-                        raise InvalidStory(
-                            f"Found two unpredictable actions in one story "
-                            f"'{tracker.sender_id}'. Check your story files."
-                        )
                     delete_first_state = True
 
                 # reset entity_data for the the next turn
@@ -668,10 +664,7 @@ class MaxHistoryTrackerFeaturizer(TrackerFeaturizer):
         Returns:
             The sliced states.
         """
-        if not slice_length:
-            return states
-
-        return states[-slice_length:]
+        return states if not slice_length else states[-slice_length:]
 
     @staticmethod
     def _hash_example(states: List[State], labels: Optional[List[Text]] = None) -> int:
@@ -691,11 +684,10 @@ class MaxHistoryTrackerFeaturizer(TrackerFeaturizer):
             s if s is None else DialogueStateTracker.freeze_current_state(s)
             for s in states
         )
-        if labels is not None:
-            frozen_labels = tuple(labels)
-            return hash((frozen_states, frozen_labels))
-        else:
+        if labels is None:
             return hash(frozen_states)
+        frozen_labels = tuple(labels)
+        return hash((frozen_states, frozen_labels))
 
     def training_states_labels_and_entities(
         self,
@@ -927,11 +919,10 @@ class IntentMaxHistoryTrackerFeaturizer(MaxHistoryTrackerFeaturizer):
         max_labels_count = max(multiple_labels_count)
         num_padding_needed = [max_labels_count - len(a) for a in label_ids]
 
-        padded_label_ids = []
-        for ids, num_pads in zip(label_ids, num_padding_needed):
-            padded_row = list(ids) + [LABEL_PAD_ID] * num_pads
-            padded_label_ids.append(padded_row)
-        return padded_label_ids
+        return [
+            list(ids) + [LABEL_PAD_ID] * num_pads
+            for ids, num_pads in zip(label_ids, num_padding_needed)
+        ]
 
     def training_states_labels_and_entities(
         self,

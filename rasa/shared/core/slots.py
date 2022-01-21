@@ -79,10 +79,7 @@ class Slot:
         return self._value_reset_delay
 
     def as_feature(self) -> List[float]:
-        if not self.influence_conversation:
-            return []
-
-        return self._as_feature()
+        return [] if not self.influence_conversation else self._as_feature()
 
     def _as_feature(self) -> List[float]:
         raise NotImplementedError(
